@@ -14,9 +14,32 @@ const TopBar = ({ title }) => {
   const [localAvatar, setLocalAvatar] = useState(null);
   const [cropModal, setCropModal] = useState(null); // { objectUrl }
   const [saving, setSaving] = useState(false);
+  const [reportsTo, setReportsTo] = useState('Loading...');
 
   useEffect(() => {
     if (user?.avatar_url) setLocalAvatar(user.avatar_url);
+    
+    // Fetch reports to (department admin)
+    if (user?.role === 'superadmin') {
+      setReportsTo('N/A (Superadmin)');
+    } else if (user?.role === 'admin') {
+      setReportsTo('Super Admin');
+    } else if (user?.department) {
+      const fetchAdmin = async () => {
+        const { data } = await supabase
+          .from('employees')
+          .select('name')
+          .eq('role', 'admin')
+          .eq('managed_department', user.department)
+          .single();
+        if (data) {
+          setReportsTo(data.name);
+        } else {
+          setReportsTo('No Admin Assigned');
+        }
+      };
+      fetchAdmin();
+    }
   }, [user]);
 
   // Close dropdown when clicking outside
@@ -105,32 +128,76 @@ const TopBar = ({ title }) => {
             <div style={{
               position: 'absolute', top: '120%', right: 0,
               background: 'white', boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
-              borderRadius: '10px', width: '190px', zIndex: 100, padding: '0.5rem 0'
-            }}>
-              <div
-                style={{ padding: '0.75rem 1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-main)', transition: 'background 0.2s' }}
-                onMouseOver={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.03)'}
-                onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
-                onClick={(e) => { e.stopPropagation(); fileInputRef.current.click(); }}
-              >
-                <i className="ri-image-edit-line"></i> Change Picture
+              borderRadius: '12px', width: '320px', zIndex: 100, padding: '1.25rem',
+              display: 'flex', flexDirection: 'column', gap: '1rem', cursor: 'default'
+            }} onClick={e => e.stopPropagation()}>
+              
+              {/* Profile Header */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ position: 'relative' }}>
+                  <div className="avatar" style={{ overflow: 'hidden', width: '60px', height: '60px', fontSize: '1.5rem', background: '#F1F5F9', color: '#64748B' }}>
+                    {localAvatar ? (
+                      <img src={localAvatar} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      user?.name?.charAt(0)
+                    )}
+                  </div>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); fileInputRef.current.click(); }}
+                    style={{ position: 'absolute', bottom: -5, right: -5, background: '#4318FF', color: 'white', border: '2px solid white', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.2)' }}
+                    title="Change Picture"
+                  >
+                    <i className="ri-pencil-fill" style={{ fontSize: '0.8rem' }}></i>
+                  </button>
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)', fontWeight: 'bold' }}>{user?.name}</h3>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748B', textTransform: 'capitalize' }}>{user?.role}</p>
+                </div>
               </div>
-              <div
-                style={{ padding: '0.75rem 1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-main)', transition: 'background 0.2s' }}
-                onMouseOver={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.03)'}
-                onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
-                onClick={() => { setDropdownOpen(false); navigate('/reset-password'); }}
-              >
-                <i className="ri-lock-password-line"></i> Reset Password
+
+              <div style={{ height: 1, background: '#F1F5F9' }} />
+
+              {/* Details */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.9rem', color: 'var(--text-main)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#64748B' }}>Department</span>
+                  <span style={{ fontWeight: 500 }}>{user?.department || 'N/A'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#64748B' }}>Designation</span>
+                  <span style={{ fontWeight: 500 }}>{user?.designation || 'N/A'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#64748B' }}>Date of Joining</span>
+                  <span style={{ fontWeight: 500 }}>{user?.date_of_joining ? new Date(user.date_of_joining).toLocaleDateString() : 'N/A'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#64748B' }}>Reports to</span>
+                  <span style={{ fontWeight: 500 }}>{reportsTo}</span>
+                </div>
               </div>
-              <div style={{ height: 1, background: '#F1F5F9', margin: '0.25rem 0' }} />
-              <div
-                style={{ padding: '0.75rem 1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--danger)', transition: 'background 0.2s' }}
-                onMouseOver={(e) => e.currentTarget.style.background = 'rgba(238,93,80,0.05)'}
-                onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
-                onClick={() => { setDropdownOpen(false); logout(); navigate('/login'); }}
-              >
-                <i className="ri-logout-box-r-line"></i> Logout
+
+              <div style={{ height: 1, background: '#F1F5F9' }} />
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                <div
+                  style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-main)', transition: 'background 0.2s', borderRadius: '6px' }}
+                  onMouseOver={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.03)'}
+                  onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                  onClick={() => { setDropdownOpen(false); navigate('/reset-password'); }}
+                >
+                  <i className="ri-lock-password-line"></i> Reset Password
+                </div>
+                <div
+                  style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--danger)', transition: 'background 0.2s', borderRadius: '6px' }}
+                  onMouseOver={(e) => e.currentTarget.style.background = 'rgba(238,93,80,0.05)'}
+                  onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                  onClick={() => { setDropdownOpen(false); logout(); navigate('/login'); }}
+                >
+                  <i className="ri-logout-box-r-line"></i> Logout
+                </div>
               </div>
             </div>
           )}
