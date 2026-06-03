@@ -197,47 +197,122 @@ const Leave = () => {
         })}
       </div>
 
-      {/* ── Tab Navigation ── */}
-      <div className="salary-tabs" style={{ display: 'flex', alignItems: 'center' }}>
-        <button
-          className={`salary-tab-btn${activeTab === 'my' ? ' active' : ''}`}
-          onClick={() => setActiveTab('my')}
-        >
-          <i className="ri-file-list-3-line" /> My Leaves
-          <span className="leave-tab-count" style={{ marginLeft: '0.25rem', background: '#E2E8F0', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.75rem', color: '#1E293B' }}>{myRequests.length}</span>
-        </button>
-        {canViewApprovals && (
-          <button
-            className={`salary-tab-btn${activeTab === 'approvals' ? ' active' : ''}`}
-            onClick={() => setActiveTab('approvals')}
-          >
-            <i className="ri-checkbox-circle-line" /> {isSuperAdmin ? 'Pending Approvals' : 'Department Approvals'}
-            {pendingApprovals.length > 0 && (
-              <span className="leave-tab-count pending" style={{ marginLeft: '0.25rem', background: '#FEE2E2', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.75rem', color: '#991B1B' }}>{pendingApprovals.length}</span>
-            )}
-          </button>
-        )}
-        {canViewApprovals && (
-          <button
-            className={`salary-tab-btn${activeTab === 'history' ? ' active' : ''}`}
-            onClick={() => setActiveTab('history')}
-          >
-            <i className="ri-history-line" /> Leave History
-          </button>
-        )}
-        
-        {isSuperAdmin && (
-          <button className="salary-add-btn" onClick={() => setShowGrantModal(true)} style={{ marginLeft: 'auto', background: '#4318FF' }}>
-            <i className="ri-award-line" /> Grant Comp Off
-          </button>
-        )}
-      </div>
-
       {/* ── Main Content ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
-        {/* Top/Left: History or Approvals */}
+        {/* Top: Apply Form */}
         <div className="card">
+          <div className="leave-section-header">
+            <h3 className="font-bold">Apply for Leave</h3>
+            {isSuperAdmin && (
+              <span className="leave-auto-badge">
+                <i className="ri-flashlight-line" /> Auto-approved
+              </span>
+            )}
+          </div>
+
+          {formMsg && (
+            <div className={`leave-form-msg ${formMsg.type}`}>
+              <i className={formMsg.type === 'success' ? 'ri-checkbox-circle-fill' : 'ri-error-warning-fill'} />
+              {formMsg.text}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit}>
+            <div className="grid grid-cols-4 gap-4">
+              <div className="input-group">
+                <label>Leave Type</label>
+                <select name="type" value={form.type} onChange={handleFormChange}>
+                  {LEAVE_TYPES.map(t => (
+                    <option key={t} value={t}>
+                      {t} ({(balance[t]?.remaining ?? 0)} days left)
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="input-group">
+                <label>From</label>
+                <input type="date" name="from" value={form.from} onChange={handleFormChange} required />
+              </div>
+              <div className="input-group">
+                <label>To</label>
+                <input type="date" name="to" value={form.to} onChange={handleFormChange} required />
+              </div>
+              <div className="input-group">
+                <label>Reason</label>
+                <input
+                  type="text"
+                  name="reason"
+                  value={form.reason}
+                  onChange={handleFormChange}
+                  placeholder="Enter reason"
+                />
+              </div>
+            </div>
+
+            {/* Reason replaced in grid */}
+
+            {form.from && form.to && new Date(form.to) >= new Date(form.from) && (
+              <div className="leave-days-preview">
+                <i className="ri-calendar-event-line" />
+                <strong>
+                  {Math.round((new Date(form.to) - new Date(form.from)) / (1000 * 60 * 60 * 24)) + 1} day(s)
+                </strong> requested
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="btn-teal"
+              style={{ marginTop: '1rem' }}
+              disabled={submitting}
+            >
+              <i className="ri-send-plane-line" />
+              {isSuperAdmin ? 'Submit & Auto-Approve' : 'Submit Request'}
+            </button>
+          </form>
+        </div>
+
+        {/* Bottom: Tabs + History */}
+        <div>
+          {/* ── Tab Navigation ── */}
+          <div className="salary-tabs" style={{ display: 'flex', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <button
+              className={`salary-tab-btn${activeTab === 'my' ? ' active' : ''}`}
+              onClick={() => setActiveTab('my')}
+            >
+              <i className="ri-file-list-3-line" /> My Leaves
+              <span className="leave-tab-count" style={{ marginLeft: '0.25rem', background: '#E2E8F0', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.75rem', color: '#1E293B' }}>{myRequests.length}</span>
+            </button>
+            {canViewApprovals && (
+              <button
+                className={`salary-tab-btn${activeTab === 'approvals' ? ' active' : ''}`}
+                onClick={() => setActiveTab('approvals')}
+              >
+                <i className="ri-checkbox-circle-line" /> {isSuperAdmin ? 'Pending Approvals' : 'Department Approvals'}
+                {pendingApprovals.length > 0 && (
+                  <span className="leave-tab-count pending" style={{ marginLeft: '0.25rem', background: '#FEE2E2', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.75rem', color: '#991B1B' }}>{pendingApprovals.length}</span>
+                )}
+              </button>
+            )}
+            {canViewApprovals && (
+              <button
+                className={`salary-tab-btn${activeTab === 'history' ? ' active' : ''}`}
+                onClick={() => setActiveTab('history')}
+              >
+                <i className="ri-history-line" /> Leave History
+              </button>
+            )}
+            
+            {isSuperAdmin && (
+              <button className="salary-add-btn" onClick={() => setShowGrantModal(true)} style={{ marginLeft: 'auto', background: '#4318FF' }}>
+                <i className="ri-award-line" /> Grant Comp Off
+              </button>
+            )}
+          </div>
+
+          {/* Top/Left: History or Approvals */}
+          <div className="card">
 
           {/* My Leaves Tab */}
           {activeTab === 'my' && (
@@ -486,77 +561,6 @@ const Leave = () => {
           )}
         </div>
 
-        {/* Right: Apply Form */}
-        <div className="card">
-          <div className="leave-section-header">
-            <h3 className="font-bold">Apply for Leave</h3>
-            {isSuperAdmin && (
-              <span className="leave-auto-badge">
-                <i className="ri-flashlight-line" /> Auto-approved
-              </span>
-            )}
-          </div>
-
-          {formMsg && (
-            <div className={`leave-form-msg ${formMsg.type}`}>
-              <i className={formMsg.type === 'success' ? 'ri-checkbox-circle-fill' : 'ri-error-warning-fill'} />
-              {formMsg.text}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit}>
-            <div className="grid grid-cols-4 gap-4">
-              <div className="input-group">
-                <label>Leave Type</label>
-                <select name="type" value={form.type} onChange={handleFormChange}>
-                  {LEAVE_TYPES.map(t => (
-                    <option key={t} value={t}>
-                      {t} ({(balance[t]?.remaining ?? 0)} days left)
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="input-group">
-                <label>From</label>
-                <input type="date" name="from" value={form.from} onChange={handleFormChange} required />
-              </div>
-              <div className="input-group">
-                <label>To</label>
-                <input type="date" name="to" value={form.to} onChange={handleFormChange} required />
-              </div>
-              <div className="input-group">
-                <label>Reason</label>
-                <input
-                  type="text"
-                  name="reason"
-                  value={form.reason}
-                  onChange={handleFormChange}
-                  placeholder="Enter reason"
-                />
-              </div>
-            </div>
-
-            {/* Reason replaced in grid */}
-
-            {form.from && form.to && new Date(form.to) >= new Date(form.from) && (
-              <div className="leave-days-preview">
-                <i className="ri-calendar-event-line" />
-                <strong>
-                  {Math.round((new Date(form.to) - new Date(form.from)) / (1000 * 60 * 60 * 24)) + 1} day(s)
-                </strong> requested
-              </div>
-            )}
-
-            <button
-              type="submit"
-              className="btn-teal"
-              style={{ marginTop: '1rem' }}
-              disabled={submitting}
-            >
-              <i className="ri-send-plane-line" />
-              {isSuperAdmin ? 'Submit & Auto-Approve' : 'Submit Request'}
-            </button>
-          </form>
         </div>
       </div>
       
