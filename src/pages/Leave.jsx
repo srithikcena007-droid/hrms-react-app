@@ -198,48 +198,46 @@ const Leave = () => {
       </div>
 
       {/* ── Tab Navigation ── */}
-      <div className="leave-tabs" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex' }}>
+      <div className="salary-tabs" style={{ display: 'flex', alignItems: 'center' }}>
+        <button
+          className={`salary-tab-btn${activeTab === 'my' ? ' active' : ''}`}
+          onClick={() => setActiveTab('my')}
+        >
+          <i className="ri-file-list-3-line" /> My Leaves
+          <span className="leave-tab-count" style={{ marginLeft: '0.25rem', background: '#E2E8F0', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.75rem', color: '#1E293B' }}>{myRequests.length}</span>
+        </button>
+        {canViewApprovals && (
           <button
-            className={`leave-tab-btn${activeTab === 'my' ? ' active' : ''}`}
-            onClick={() => setActiveTab('my')}
+            className={`salary-tab-btn${activeTab === 'approvals' ? ' active' : ''}`}
+            onClick={() => setActiveTab('approvals')}
           >
-            <i className="ri-file-list-3-line" /> My Leaves
-            <span className="leave-tab-count">{myRequests.length}</span>
+            <i className="ri-checkbox-circle-line" /> {isSuperAdmin ? 'Pending Approvals' : 'Department Approvals'}
+            {pendingApprovals.length > 0 && (
+              <span className="leave-tab-count pending" style={{ marginLeft: '0.25rem', background: '#FEE2E2', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.75rem', color: '#991B1B' }}>{pendingApprovals.length}</span>
+            )}
           </button>
-          {canViewApprovals && (
-            <button
-              className={`leave-tab-btn${activeTab === 'approvals' ? ' active' : ''}`}
-              onClick={() => setActiveTab('approvals')}
-            >
-              <i className="ri-checkbox-circle-line" /> {isSuperAdmin ? 'Pending Approvals' : 'Department Approvals'}
-              {pendingApprovals.length > 0 && (
-                <span className="leave-tab-count pending">{pendingApprovals.length}</span>
-              )}
-            </button>
-          )}
-          {canViewApprovals && (
-            <button
-              className={`leave-tab-btn${activeTab === 'history' ? ' active' : ''}`}
-              onClick={() => setActiveTab('history')}
-            >
-              <i className="ri-history-line" /> Leave History
-            </button>
-          )}
-        </div>
+        )}
+        {canViewApprovals && (
+          <button
+            className={`salary-tab-btn${activeTab === 'history' ? ' active' : ''}`}
+            onClick={() => setActiveTab('history')}
+          >
+            <i className="ri-history-line" /> Leave History
+          </button>
+        )}
         
         {isSuperAdmin && (
-          <button className="btn-teal" onClick={() => setShowGrantModal(true)} style={{ background: '#4318FF' }}>
+          <button className="salary-add-btn" onClick={() => setShowGrantModal(true)} style={{ marginLeft: 'auto', background: '#4318FF' }}>
             <i className="ri-award-line" /> Grant Comp Off
           </button>
         )}
       </div>
 
       {/* ── Main Content ── */}
-      <div className="leave-main-grid">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
-        {/* Left: History or Approvals */}
-        <div className="card" style={{ gridColumn: 'span 2', minWidth: 0 }}>
+        {/* Top/Left: History or Approvals */}
+        <div className="card">
 
           {/* My Leaves Tab */}
           {activeTab === 'my' && (
@@ -507,18 +505,17 @@ const Leave = () => {
           )}
 
           <form onSubmit={handleSubmit}>
-            <div className="input-group">
-              <label>Leave Type</label>
-              <select name="type" value={form.type} onChange={handleFormChange}>
-                {LEAVE_TYPES.map(t => (
-                  <option key={t} value={t}>
-                    {t} ({(balance[t]?.remaining ?? 0)} days left)
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-4 gap-4">
+              <div className="input-group">
+                <label>Leave Type</label>
+                <select name="type" value={form.type} onChange={handleFormChange}>
+                  {LEAVE_TYPES.map(t => (
+                    <option key={t} value={t}>
+                      {t} ({(balance[t]?.remaining ?? 0)} days left)
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div className="input-group">
                 <label>From</label>
                 <input type="date" name="from" value={form.from} onChange={handleFormChange} required />
@@ -527,18 +524,19 @@ const Leave = () => {
                 <label>To</label>
                 <input type="date" name="to" value={form.to} onChange={handleFormChange} required />
               </div>
+              <div className="input-group">
+                <label>Reason</label>
+                <input
+                  type="text"
+                  name="reason"
+                  value={form.reason}
+                  onChange={handleFormChange}
+                  placeholder="Enter reason"
+                />
+              </div>
             </div>
 
-            <div className="input-group">
-              <label>Reason</label>
-              <input
-                type="text"
-                name="reason"
-                value={form.reason}
-                onChange={handleFormChange}
-                placeholder="Enter reason for leave"
-              />
-            </div>
+            {/* Reason replaced in grid */}
 
             {form.from && form.to && new Date(form.to) >= new Date(form.from) && (
               <div className="leave-days-preview">

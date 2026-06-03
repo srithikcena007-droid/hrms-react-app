@@ -408,9 +408,9 @@ const Dashboard = () => {
 
       {/* Bottom Row: Leaves Grid */}
       <div className="card" style={{ padding: '1.5rem' }}>
-        <div className="flex justify-between items-center mb-5">
+        <div className="flex justify-between items-center mb-5" style={{ cursor: 'pointer' }} onClick={() => navigate('/leave')}>
           <h3 className="font-bold" style={{ fontSize: '1.125rem', color: 'var(--text-main)' }}>Leaves</h3>
-          <i className="ri-arrow-right-s-line" style={{ color: '#A3AED0', fontSize: '1.25rem', cursor: 'pointer' }}></i>
+          <i className="ri-arrow-right-s-line" style={{ color: '#A3AED0', fontSize: '1.25rem' }}></i>
         </div>
         
         <div className="leaves-grid">
