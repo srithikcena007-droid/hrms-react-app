@@ -1,7 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import logoWithText from '../assets/logo-with-text.png';
+import logoDark from '../assets/logo-dark.png';
 
 const Login = () => {
   const { login, user } = useContext(AuthContext);
@@ -12,6 +12,17 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  // Load Remember Me credentials on mount
+  React.useEffect(() => {
+    const savedEmail = localStorage.getItem('spatio_remember_email');
+    const savedPassword = localStorage.getItem('spatio_remember_password');
+    if (savedEmail && savedPassword) {
+      setEmail(savedEmail);
+      setPassword(savedPassword);
+      setRememberMe(true);
+    }
+  }, []);
+
   if (user) return <Navigate to="/" replace />;
 
   const handleLogin = async (e) => {
@@ -21,16 +32,19 @@ const Login = () => {
     const result = await login(email, password);
     setLoading(false);
     if (result.success) {
+      if (rememberMe) {
+        localStorage.setItem('spatio_remember_email', email);
+        localStorage.setItem('spatio_remember_password', password);
+      } else {
+        localStorage.removeItem('spatio_remember_email');
+        localStorage.removeItem('spatio_remember_password');
+      }
       navigate('/');
     } else {
       setError(result.message);
     }
   };
 
-  const handleFillCredentials = (demoEmail, demoPassword) => {
-    setEmail(demoEmail);
-    setPassword(demoPassword);
-  };
 
   return (
     <div className="login-container">
@@ -47,7 +61,7 @@ const Login = () => {
         <div className="login-form-container">
           {/* Logo */}
           <div className="login-logo-container" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <img src={logoWithText} alt="Spatio Logo" style={{ height: '48px', objectFit: 'contain' }} />
+            <img src={logoDark} alt="Spatio Logo" style={{ height: '48px', objectFit: 'contain' }} />
           </div>
 
           {/* Heading */}
@@ -114,40 +128,7 @@ const Login = () => {
             </button>
           </form>
 
-          {/* Demo Credentials */}
-          <div className="demo-credentials-card">
-            <div className="demo-title">Demo Credentials:</div>
-            <div
-              className="demo-item"
-              onClick={() => handleFillCredentials('admin@spatio.com', 'admin123')}
-              title="Click to auto-fill"
-            >
-              <div>
-                <strong>Super Admin:</strong> admin@spatio.com / admin123
-              </div>
-              <span className="demo-click-badge">Click to fill</span>
-            </div>
-            <div
-              className="demo-item"
-              onClick={() => handleFillCredentials('manager@spatio.com', 'manager123')}
-              title="Click to auto-fill"
-            >
-              <div>
-                <strong>Manager:</strong> manager@spatio.com / manager123
-              </div>
-              <span className="demo-click-badge">Click to fill</span>
-            </div>
-            <div
-              className="demo-item"
-              onClick={() => handleFillCredentials('employee@spatio.com', 'employee123')}
-              title="Click to auto-fill"
-            >
-              <div>
-                <strong>Employee:</strong> employee@spatio.com / employee123
-              </div>
-              <span className="demo-click-badge">Click to fill</span>
-            </div>
-          </div>
+
         </div>
       </div>
     </div>

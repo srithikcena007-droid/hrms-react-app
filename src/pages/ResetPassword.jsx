@@ -1,26 +1,67 @@
 import React, { useState, useContext } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { AuthContext } from '../context/AuthContext';
+import { supabase } from '../utils/supabaseClient';
 
 const ResetPassword = () => {
   const { user, updatePassword } = useContext(AuthContext);
   const navigate = useNavigate();
 
+  // Logged-in state
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  
+  // Logged-out state
+  const [email, setEmail] = useState('');
+  const [tempPasswordGenerated, setTempPasswordGenerated] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({ message: '', type: '' });
 
-  if (!user) return <Navigate to="/login" replace />;
-
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
-    setTimeout(() => setToast({ message: '', type: '' }), 3500);
+    setTimeout(() => setToast({ message: '', type: '' }), 4000);
   };
 
-  const handleSubmit = async (e) => {
+  const handleLoggedOutSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    // Check if email exists
+    const { data, error } = await supabase
+      .from('employees')
+      .select('*')
+      .eq('email', email.trim().toLowerCase())
+      .single();
+
+    if (error || !data) {
+      setLoading(false);
+      showToast('No account found with that email.', 'error');
+      return;
+    }
+
+    // Generate random temp password
+    const tempPass = Math.random().toString(36).slice(-8);
+
+    // Update password in DB
+    const { error: updateError } = await supabase
+      .from('employees')
+      .update({ password: tempPass })
+      .eq('id', data.id);
+
+    setLoading(false);
+
+    if (updateError) {
+      showToast('Failed to reset password. Please try again.', 'error');
+    } else {
+      setTempPasswordGenerated(tempPass);
+      showToast('Password reset successful! Check your email.', 'success');
+    }
+  };
+
+  const handleLoggedInSubmit = async (e) => {
     e.preventDefault();
 
     if (currentPassword !== user.password) {
@@ -51,8 +92,93 @@ const ResetPassword = () => {
     }
   };
 
+  // If NOT logged in, show "Forgot Password" UI
+  if (!user) {
+    return (
+      <div className="login-container">
+        <div className="login-right" style={{ flex: 'none', margin: '0 auto', maxWidth: 600, width: '100%', padding: '2rem' }}>
+          <div className="login-form-container" style={{ margin: '0 auto', background: 'white', padding: '3rem', borderRadius: 24, boxShadow: '0 20px 40px rgba(0,0,0,0.08)' }}>
+            <div className="login-header" style={{ textAlign: 'center', marginBottom: '2rem' }}>
+              <div style={{
+                width: 64, height: 64, borderRadius: '50%',
+                background: 'rgba(67, 24, 255, 0.1)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                margin: '0 auto 1.5rem',
+                color: 'var(--primary)', fontSize: '2rem'
+              }}>
+                <i className="ri-mail-send-line"></i>
+              </div>
+              <h2>Forgot Password?</h2>
+              <p>Enter your email to receive a temporary password.</p>
+            </div>
+
+            {tempPasswordGenerated ? (
+              <div style={{
+                background: '#F0FFF8', border: '1px solid #00A884', borderRadius: 12,
+                padding: '1.5rem', textAlign: 'center', marginBottom: '2rem'
+              }}>
+                <h3 style={{ color: '#00A884', marginBottom: '1rem' }}>Success!</h3>
+                <p style={{ color: '#2B3674', fontSize: '0.95rem', marginBottom: '1rem' }}>
+                  An email has been sent to <strong>{email}</strong> with your temporary password.
+                </p>
+                <div style={{ background: '#E2F8F0', padding: '1rem', borderRadius: 8, fontSize: '1.25rem', letterSpacing: '2px', fontWeight: 'bold', color: '#006D53' }}>
+                  {tempPasswordGenerated}
+                </div>
+                <p style={{ color: '#707EAE', fontSize: '0.8rem', marginTop: '1rem' }}>
+                  (This is displayed here for testing purposes since we don't have a real email server connected).
+                </p>
+                <Link to="/login" className="btn-signin" style={{ display: 'inline-block', textDecoration: 'none', marginTop: '1.5rem' }}>
+                  Return to Login
+                </Link>
+              </div>
+            ) : (
+              <form onSubmit={handleLoggedOutSubmit}>
+                <div className="login-input-group">
+                  <label>Email Address</label>
+                  <input
+                    type="email"
+                    placeholder="Enter your registered email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <button type="submit" className="btn-signin" disabled={loading} style={{ marginTop: '1rem' }}>
+                  {loading ? 'Sending...' : 'Send Temporary Password'}
+                </button>
+                <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
+                  <Link to="/login" style={{ color: 'var(--primary)', textDecoration: 'none', fontWeight: 600 }}>
+                    <i className="ri-arrow-left-line"></i> Back to Login
+                  </Link>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+        
+        {/* Toast */}
+        {toast.message && (
+          <div style={{
+            position: 'fixed', top: '2rem', right: '50%', transform: 'translateX(50%)',
+            background: toast.type === 'error' ? '#FFF0F0' : '#F0FFF8',
+            border: `1px solid ${toast.type === 'error' ? '#FFCDD2' : '#00A88433'}`,
+            color: toast.type === 'error' ? '#C62828' : '#00A884',
+            padding: '1rem 2rem', borderRadius: 100,
+            display: 'flex', alignItems: 'center', gap: '0.5rem',
+            fontWeight: 600, fontSize: '0.95rem',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.12)', zIndex: 9999,
+          }}>
+            <i className={toast.type === 'error' ? 'ri-error-warning-fill' : 'ri-checkbox-circle-fill'} />
+            {toast.message}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // If logged in, show "Change Password" UI
   return (
-    <Layout title="Reset Password">
+    <Layout title="Change Password">
       <div style={{ maxWidth: 480, margin: '0 auto' }}>
         <div className="card">
           {/* Header */}
@@ -73,8 +199,7 @@ const ResetPassword = () => {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit}>
-            {/* Current Password */}
+          <form onSubmit={handleLoggedInSubmit}>
             <div className="salary-field">
               <label className="salary-field-label">
                 Current Password <span className="salary-required">*</span>
@@ -89,7 +214,6 @@ const ResetPassword = () => {
               />
             </div>
 
-            {/* New Password */}
             <div className="salary-field">
               <label className="salary-field-label">
                 New Password <span className="salary-required">*</span>
@@ -104,7 +228,6 @@ const ResetPassword = () => {
               />
             </div>
 
-            {/* Confirm New Password */}
             <div className="salary-field">
               <label className="salary-field-label">
                 Confirm New Password <span className="salary-required">*</span>
@@ -119,7 +242,6 @@ const ResetPassword = () => {
               />
             </div>
 
-            {/* Strength hint */}
             {newPassword && (
               <div style={{
                 padding: '0.6rem 0.9rem',
@@ -129,9 +251,7 @@ const ResetPassword = () => {
                 fontSize: '0.8rem',
                 color: newPassword.length >= 8 ? '#00A884' : '#E57D3E',
                 marginBottom: '1rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.4rem'
+                display: 'flex', alignItems: 'center', gap: '0.4rem'
               }}>
                 <i className={newPassword.length >= 8 ? 'ri-shield-check-line' : 'ri-shield-line'} />
                 {newPassword.length >= 8 ? 'Strong password' : 'Use 8+ characters for a stronger password'}
@@ -155,7 +275,6 @@ const ResetPassword = () => {
         </div>
       </div>
 
-      {/* Toast */}
       {toast.message && (
         <div style={{
           position: 'fixed', bottom: '2rem', right: '2rem',

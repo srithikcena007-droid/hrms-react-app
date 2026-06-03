@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import logoWithText from '../assets/logo-with-text.png';
+import logoDark from '../assets/logo-dark.png';
 
 const Sidebar = () => {
   const { user, logout } = useContext(AuthContext);
@@ -23,7 +23,7 @@ const Sidebar = () => {
   return (
     <div className="sidebar">
       <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '1rem 0' }}>
-        <img src={logoWithText} alt="Spatio Logo" style={{ height: '42px', objectFit: 'contain' }} />
+        <img src={logoDark} alt="Spatio Logo" style={{ height: '42px', objectFit: 'contain' }} />
       </div>
       <div className="sidebar-menu">
         {filteredMenu.map(item => (
