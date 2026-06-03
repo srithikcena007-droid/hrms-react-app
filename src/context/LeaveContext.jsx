@@ -80,6 +80,7 @@ export const LeaveProvider = ({ children }) => {
       from_date: from,
       to_date: to,
       days,
+      reason,
       status
     }]);
 
