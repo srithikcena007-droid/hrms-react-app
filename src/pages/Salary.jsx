@@ -125,8 +125,13 @@ const AllPaymentsTable = ({ payments, onDownload, onDelete }) => (
 
 /* ── Add Payment Modal ── */
 const AddPaymentModal = ({ onClose, onAdd }) => {
-  const { ALL_USERS } = useContext(SalaryContext);
+  const { ALL_USERS, refreshUsers } = useContext(SalaryContext);
   
+  // Refresh users when modal opens so new employees appear immediately
+  useEffect(() => {
+    if (refreshUsers) refreshUsers();
+  }, []);
+
   const [selectedUserId, setSelectedUserId] = useState('');
   const [month, setMonth] = useState('');
   const [year, setYear] = useState(String(new Date().getFullYear()));

@@ -158,7 +158,9 @@ const Employees = () => {
   }, [user]);
 
   const handleSaveEmployee = async (employeeData) => {
-    const { id, ...dataToSave } = employeeData;
+    const { id, email, ...rest } = employeeData;
+    const cleanEmail = email.toLowerCase().trim();
+    const dataToSave = { ...rest, email: cleanEmail };
     
     if (id) {
       // Edit mode

@@ -119,7 +119,7 @@ export const SalaryProvider = ({ children }) => {
   };
 
   return (
-    <SalaryContext.Provider value={{ payments, addPayment, deletePayment, getUserPayments, getAllPayments, ALL_USERS: allUsers }}>
+    <SalaryContext.Provider value={{ payments, addPayment, deletePayment, getUserPayments, getAllPayments, ALL_USERS: allUsers, refreshUsers: fetchEmployees }}>
       {children}
     </SalaryContext.Provider>
   );
