@@ -1,0 +1,414 @@
+import React, { useState, useContext, useEffect, useRef } from 'react';
+import Layout from '../components/Layout';
+import { AuthContext } from '../context/AuthContext';
+import { SalaryContext, SALARY_CONFIG, ALL_USERS } from '../context/SalaryContext';
+import { generatePayslip } from '../utils/generatePayslip';
+
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+const fmt = (n) => `₹ ${Number(n).toLocaleString('en-IN')}`;
+
+/* ── Salary breakdown cards (4 coloured boxes) ── */
+const SalaryBreakdown = ({ config }) => (
+  <div className="salary-breakdown-grid">
+    <div className="salary-breakdown-card blue">
+      <p className="sbc-label">Base Salary</p>
+      <p className="sbc-value blue">{fmt(config.base)}</p>
+    </div>
+    <div className="salary-breakdown-card green">
+      <p className="sbc-label">Allowances</p>
+      <p className="sbc-value green">{fmt(config.allowances)}</p>
+    </div>
+    <div className="salary-breakdown-card red">
+      <p className="sbc-label">Deductions</p>
+      <p className="sbc-value red">{fmt(config.deductions)}</p>
+    </div>
+    <div className="salary-breakdown-card purple">
+      <p className="sbc-label">Net Salary</p>
+      <p className="sbc-value purple">{fmt(config.net)}</p>
+    </div>
+  </div>
+);
+
+/* ── Payment history table (employee/admin/superadmin own view) ── */
+const PaymentHistoryTable = ({ payments, onDownload }) => (
+  payments.length === 0 ? (
+    <div className="salary-empty-state">
+      <i className="ri-money-dollar-circle-line" />
+      <p>No payment records found</p>
+    </div>
+  ) : (
+    <div className="salary-table-wrap">
+      <table className="salary-table">
+        <thead>
+          <tr>
+            <th>Month</th>
+            <th>Year</th>
+            <th>Amount Paid</th>
+            <th>Payment Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {payments.map(row => (
+            <tr key={row.id}>
+              <td>{row.month}</td>
+              <td>{row.year}</td>
+              <td>{fmt(row.amountPaid)}</td>
+              <td>{row.paymentDate}</td>
+              <td>
+                <button
+                  className="salary-payslip-btn"
+                  onClick={() => onDownload(row)}
+                >
+                  <i className="ri-download-2-line" /> Payslip
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+);
+
+/* ── All payments table (superadmin view) ── */
+const AllPaymentsTable = ({ payments, onDownload }) => (
+  payments.length === 0 ? (
+    <div className="salary-empty-state">
+      <i className="ri-money-dollar-circle-line" />
+      <p>No payment records found</p>
+    </div>
+  ) : (
+    <div className="salary-table-wrap">
+      <table className="salary-table">
+        <thead>
+          <tr>
+            <th>Employee</th>
+            <th>Month</th>
+            <th>Year</th>
+            <th>Amount Paid</th>
+            <th>Payment Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {payments.map(row => (
+            <tr key={row.id}>
+              <td>
+                <div className="salary-emp-cell">
+                  <span className="salary-emp-name">{row.userName}</span>
+                  <span className="salary-emp-code">{row.empCode}</span>
+                </div>
+              </td>
+              <td>{row.month}</td>
+              <td>{row.year}</td>
+              <td>{fmt(row.amountPaid)}</td>
+              <td>{row.paymentDate}</td>
+              <td>
+                <button className="salary-payslip-btn" onClick={() => onDownload(row)}>
+                  <i className="ri-download-2-line" /> Payslip
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+);
+
+/* ── Add Payment Modal ── */
+const AddPaymentModal = ({ onClose, onAdd }) => {
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [month, setMonth] = useState('');
+  const [year, setYear] = useState(String(new Date().getFullYear()));
+  const [amountPaid, setAmountPaid] = useState('0');
+  const [paymentDate, setPaymentDate] = useState('');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropRef = useRef(null);
+
+  const selectedUser = ALL_USERS.find(u => u.id === Number(selectedUserId));
+  const selectedConfig = selectedUser ? SALARY_CONFIG[selectedUser.id] : null;
+
+  // Auto-fill amount when employee selected
+  useEffect(() => {
+    if (selectedConfig) setAmountPaid(String(selectedConfig.net));
+  }, [selectedUserId]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => { if (dropRef.current && !dropRef.current.contains(e.target)) setDropdownOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!selectedUser || !month || !paymentDate) return;
+    // Format paymentDate from yyyy-mm-dd to dd/mm/yyyy
+    const [y, m, d] = paymentDate.split('-');
+    const fmtDate = `${d}/${m}/${y}`;
+    onAdd({
+      userId: selectedUser.id,
+      empCode: selectedUser.empCode,
+      userName: selectedUser.name,
+      month,
+      year,
+      amountPaid,
+      paymentDate: fmtDate,
+    });
+  };
+
+  return (
+    <div className="salary-modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="salary-modal">
+        <div className="salary-modal-header">
+          <div>
+            <h3 className="salary-modal-title">Add Salary Payment</h3>
+            <p className="salary-modal-sub">Record a salary payment and generate payslip</p>
+          </div>
+          <button className="salary-modal-close" onClick={onClose}><i className="ri-close-line" /></button>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          {/* Employee Dropdown */}
+          <div className="salary-field">
+            <label className="salary-field-label">Employee <span className="salary-required">*</span></label>
+            <div className="salary-custom-select" ref={dropRef}>
+              <button
+                type="button"
+                className="salary-select-trigger"
+                onClick={() => setDropdownOpen(o => !o)}
+              >
+                <span style={{ color: selectedUser ? '#2B3674' : '#A3AED0' }}>
+                  {selectedUser ? `${selectedUser.name} (${selectedUser.empCode})` : 'Select employee'}
+                </span>
+                <i className={`ri-arrow-${dropdownOpen ? 'up' : 'down'}-s-line`} />
+              </button>
+              {dropdownOpen && (
+                <div className="salary-dropdown-list">
+                  {ALL_USERS.map(u => (
+                    <div
+                      key={u.id}
+                      className={`salary-dropdown-item${Number(selectedUserId) === u.id ? ' selected' : ''}`}
+                      onClick={() => { setSelectedUserId(String(u.id)); setDropdownOpen(false); }}
+                    >
+                      {u.name} ({u.empCode})
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Salary breakdown preview after employee selected */}
+          {selectedConfig && (
+            <div className="salary-breakdown-preview">
+              <span>Base: {fmt(selectedConfig.base)}</span>
+              <span>Allowances: {fmt(selectedConfig.allowances)}</span>
+              <span>Deductions: {fmt(selectedConfig.deductions)}</span>
+              <span className="sbp-net">Net Salary: {fmt(selectedConfig.net)}</span>
+            </div>
+          )}
+
+          {/* Month + Year row */}
+          <div className="salary-field-row">
+            <div className="salary-field">
+              <label className="salary-field-label">Month <span className="salary-required">*</span></label>
+              <select
+                className="salary-input"
+                value={month}
+                onChange={e => setMonth(e.target.value)}
+                required
+              >
+                <option value="">Select month</option>
+                {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+            <div className="salary-field">
+              <label className="salary-field-label">Year <span className="salary-required">*</span></label>
+              <input
+                className="salary-input"
+                type="number"
+                value={year}
+                onChange={e => setYear(e.target.value)}
+                min="2000"
+                max="2099"
+                required
+              />
+            </div>
+          </div>
+
+          {/* Amount Paid */}
+          <div className="salary-field">
+            <label className="salary-field-label">Amount Paid <span className="salary-required">*</span></label>
+            <input
+              className="salary-input"
+              type="number"
+              value={amountPaid}
+              onChange={e => setAmountPaid(e.target.value)}
+              min="0"
+              required
+            />
+          </div>
+
+          {/* Payment Date */}
+          <div className="salary-field">
+            <label className="salary-field-label">Payment Date <span className="salary-required">*</span></label>
+            <input
+              className="salary-input"
+              type="date"
+              value={paymentDate}
+              onChange={e => setPaymentDate(e.target.value)}
+              required
+            />
+          </div>
+
+          <div className="salary-modal-actions">
+            <button type="button" className="salary-cancel-btn" onClick={onClose}>Cancel</button>
+            <button type="submit" className="salary-submit-btn">
+              Add Payment &amp; Generate Payslip
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+/* ── Toast notification ── */
+const Toast = ({ message, onClose }) => {
+  useEffect(() => {
+    const t = setTimeout(onClose, 3500);
+    return () => clearTimeout(t);
+  }, []);
+  return (
+    <div className="salary-toast">
+      <i className="ri-checkbox-circle-fill" />
+      <span>{message}</span>
+    </div>
+  );
+};
+
+/* ══════════════════════════════════════════════════════
+   Main Salary Page
+══════════════════════════════════════════════════════ */
+const Salary = () => {
+  const { user } = useContext(AuthContext);
+  const { getUserPayments, getAllPayments, addPayment } = useContext(SalaryContext);
+
+  const isSuperAdmin = user?.role === 'superadmin';
+  // superadmin gets two tabs; others only see own payslips
+  const [activeTab, setActiveTab] = useState('myPayslips');
+  const [showModal, setShowModal] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  const myConfig = user ? SALARY_CONFIG[user.id] : null;
+  const myPayments = user ? getUserPayments(user.id) : [];
+  const allPayments = getAllPayments();
+
+  const handleDownload = (row) => {
+    const config = SALARY_CONFIG[row.userId];
+    generatePayslip(row, config);
+    setToast(`Generating payslip for ${row.userName} – ${row.month} ${row.year}`);
+  };
+
+  const handleAddPayment = (data) => {
+    addPayment(data);
+    setShowModal(false);
+    setToast(`Salary payment added for ${data.userName}!`);
+  };
+
+  return (
+    <Layout title="Salary & Payroll">
+      {/* ── Page header row ── */}
+      <div className="salary-page-header">
+        <div>
+          <h2 className="salary-page-title">Salary &amp; Payroll</h2>
+          <p className="salary-page-sub">
+            {isSuperAdmin
+              ? 'Manage salary payments and generate payslips'
+              : 'View your salary information and download payslips'}
+          </p>
+        </div>
+        {isSuperAdmin && (
+          <button className="salary-add-btn" onClick={() => setShowModal(true)}>
+            <i className="ri-add-line" /> Add Payment
+          </button>
+        )}
+      </div>
+
+      {/* ── Superadmin tab bar ── */}
+      {isSuperAdmin && (
+        <div className="salary-tabs">
+          <button
+            className={`salary-tab-btn${activeTab === 'myPayslips' ? ' active' : ''}`}
+            onClick={() => setActiveTab('myPayslips')}
+          >
+            <i className="ri-user-line" /> My Payslips
+          </button>
+          <button
+            className={`salary-tab-btn${activeTab === 'allPayments' ? ' active' : ''}`}
+            onClick={() => setActiveTab('allPayments')}
+          >
+            <i className="ri-group-line" /> All Payments
+          </button>
+        </div>
+      )}
+
+      {/* ── My Payslips view (all roles) ── */}
+      {activeTab === 'myPayslips' && (
+        <>
+          {myConfig && (
+            <div className="salary-section-card">
+              <div className="salary-section-header">
+                <div>
+                  <h3 className="salary-section-title">Current Salary Details</h3>
+                  <p className="salary-section-sub">Your salary breakdown</p>
+                </div>
+              </div>
+              <SalaryBreakdown config={myConfig} />
+            </div>
+          )}
+
+          <div className="salary-section-card" style={{ marginTop: '1.5rem' }}>
+            <div className="salary-section-header">
+              <div>
+                <h3 className="salary-section-title">Payment History</h3>
+                <p className="salary-section-sub">Your salary payment records and payslips</p>
+              </div>
+            </div>
+            <PaymentHistoryTable payments={myPayments} onDownload={handleDownload} />
+          </div>
+        </>
+      )}
+
+      {/* ── All Payments view (superadmin only) ── */}
+      {activeTab === 'allPayments' && isSuperAdmin && (
+        <div className="salary-section-card">
+          <div className="salary-section-header">
+            <div>
+              <h3 className="salary-section-title">All Salary Payments</h3>
+              <p className="salary-section-sub">View all salary payments made to employees</p>
+            </div>
+          </div>
+          <AllPaymentsTable payments={allPayments} onDownload={handleDownload} />
+        </div>
+      )}
+
+      {/* ── Add Payment Modal ── */}
+      {showModal && (
+        <AddPaymentModal
+          onClose={() => setShowModal(false)}
+          onAdd={handleAddPayment}
+        />
+      )}
+
+      {/* ── Toast ── */}
+      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+    </Layout>
+  );
+};
+
+export default Salary;
