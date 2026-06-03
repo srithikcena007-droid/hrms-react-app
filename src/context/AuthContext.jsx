@@ -37,6 +37,10 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  const updateUser = (updatedFields) => {
+    setUser(prev => prev ? { ...prev, ...updatedFields } : prev);
+  };
+
   // Update password in Supabase
   const updatePassword = async (newPassword) => {
     if (!user) return { success: false, message: 'Not logged in.' };
@@ -51,7 +55,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, updatePassword }}>
+    <AuthContext.Provider value={{ user, login, logout, updatePassword, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

@@ -258,9 +258,9 @@ const Leave = () => {
                         <th>From</th>
                         <th>To</th>
                         <th>Days</th>
-                        <th>Reason</th>
-                        <th>Applied On</th>
                         <th>Status</th>
+                        <th>Applied On</th>
+                        <th></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -277,15 +277,16 @@ const Leave = () => {
                           <td>{row.from_date || row.from}</td>
                           <td>{row.to_date || row.to}</td>
                           <td><strong>{row.days}</strong></td>
-                          <td
-                            style={{ maxWidth: 150, color: '#707EAE', cursor: row.reason ? 'pointer' : 'default', textDecoration: row.reason ? 'underline dotted' : 'none' }}
-                            title={row.reason ? 'Click to view reason' : ''}
-                            onClick={() => row.reason && setSelectedLeaveReason({ reason: row.reason, type: row.type, comment: row.rejection_comment })}
-                          >
-                            {row.reason ? (row.reason.length > 30 ? row.reason.slice(0, 30) + '...' : row.reason) : '—'}
-                          </td>
-                          <td style={{ color: '#A3AED0' }}>{new Date(row.created_at || row.appliedOn || new Date()).toLocaleDateString()}</td>
                           <td>{statusBadge(row.status)}</td>
+                          <td style={{ color: '#A3AED0' }}>{new Date(row.created_at || row.appliedOn || new Date()).toLocaleDateString()}</td>
+                          <td>
+                            <button
+                              style={{ background: 'none', border: '1px solid #CBD5E1', borderRadius: 6, padding: '0.25rem 0.6rem', cursor: 'pointer', color: '#4318FF', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
+                              onClick={() => setSelectedLeaveReason({ reason: row.reason || 'No reason provided.', type: row.type, comment: row.rejection_comment, status: row.status })}
+                            >
+                              <i className="ri-eye-line" /> View
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>

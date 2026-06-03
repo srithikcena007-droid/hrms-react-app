@@ -117,14 +117,14 @@ const Dashboard = () => {
     if (existingAtt) {
       await supabase.from('attendance').update({
         check_in: timeStr,
-        status: now.getHours() >= 9 && now.getMinutes() > 0 ? 'Late' : 'Present'
+        status: (now.getHours() > 10 || (now.getHours() === 10 && now.getMinutes() >= 30)) ? 'Late' : 'Present'
       }).eq('id', existingAtt.id);
     } else {
       await supabase.from('attendance').insert({
         employee_id: user.id,
         date: today,
         check_in: timeStr,
-        status: now.getHours() >= 9 && now.getMinutes() > 0 ? 'Late' : 'Present'
+        status: (now.getHours() > 10 || (now.getHours() === 10 && now.getMinutes() >= 30)) ? 'Late' : 'Present'
       });
     }
 
@@ -263,7 +263,11 @@ const Dashboard = () => {
             </div>
             <div className="card-info">
               <span className="card-label">Attendance</span>
-              <span className="card-value">20</span>
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'baseline', marginTop: '0.2rem' }}>
+                <span className="card-value" style={{ color: '#00A884', fontSize: '1.5rem' }}>{attendanceCounts.present} <span style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 500 }}>Present</span></span>
+                <span style={{ color: '#E2E8F0' }}>|</span>
+                <span className="card-value" style={{ color: '#EE5D50', fontSize: '1.5rem' }}>{attendanceCounts.absent} <span style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 500 }}>Absent</span></span>
+              </div>
             </div>
           </div>
 
@@ -324,25 +328,48 @@ const Dashboard = () => {
             <h3 className="font-bold mb-4" style={{ fontSize: '1.125rem', color: 'var(--text-main)' }}>Attendance</h3>
             
             {isEmployee ? (
-              <p className="text-muted text-sm">Your attendance details are available in the Attendance tab.</p>
-            ) : (
               <>
-                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
-                  <div style={{ flex: 1, background: '#F0FDF9', borderRadius: 12, padding: '1rem', textAlign: 'center' }}>
-                    <div style={{ fontSize: '2rem', fontWeight: 700, color: '#00A884' }}>{attendanceCounts.present}</div>
-                    <div style={{ color: '#64748B', fontSize: '0.85rem', marginTop: '0.25rem' }}>Present Today</div>
+                {attendanceStatus === 'not_checked_in' && (
+                  <div>
+                    <div className="alert-banner warning">
+                      <i className="ri-error-warning-line alert-icon"></i>
+                      <div className="alert-content">
+                        <span className="alert-title">Action Required</span>
+                        <span className="alert-desc">Please check in to start your day</span>
+                      </div>
+                    </div>
+                    <button className="btn-teal" onClick={handleCheckInClick}>
+                      <i className="ri-time-line"></i> Check In (Submit BOS)
+                    </button>
                   </div>
-                  <div style={{ flex: 1, background: '#FFF2F2', borderRadius: 12, padding: '1rem', textAlign: 'center' }}>
-                    <div style={{ fontSize: '2rem', fontWeight: 700, color: '#EE5D50' }}>{attendanceCounts.absent}</div>
-                    <div style={{ color: '#64748B', fontSize: '0.85rem', marginTop: '0.25rem' }}>Absent Today</div>
+                )}
+                {attendanceStatus === 'checked_in' && (
+                  <div>
+                    <div className="alert-banner info">
+                      <i className="ri-time-line alert-icon"></i>
+                      <div className="alert-content">
+                        <span className="alert-title">Currently Checked In</span>
+                        <span className="alert-desc">Check in time: {checkInTime || '-'}</span>
+                      </div>
+                    </div>
+                    <button className="btn-outline-blue" onClick={handleCheckOutClick}>
+                      <i className="ri-time-line"></i> Check Out (Submit EOD)
+                    </button>
                   </div>
-                </div>
-                <p style={{ color: '#A3AED0', fontSize: '0.8rem' }}>
-                  {isNormalAdmin ? `Department: ${user.managed_department || 'All'}` : 'All Departments'}
-                </p>
+                )}
+                {attendanceStatus === 'attendance_complete' && (
+                  <div className="alert-banner success" style={{ marginBottom: 0 }}>
+                    <i className="ri-checkbox-circle-line alert-icon"></i>
+                    <div className="alert-content">
+                      <span className="alert-title">Attendance Complete</span>
+                      <span className="alert-desc">Check in: {checkInTime} | Check out: {checkOutTime}</span>
+                    </div>
+                  </div>
+                )}
               </>
+            ) : (
+              <p className="text-muted text-sm">Today's attendance overview is shown in the stats card above.</p>
             )}
-
           </div>
 
         </div> {/* End Left Column */}
