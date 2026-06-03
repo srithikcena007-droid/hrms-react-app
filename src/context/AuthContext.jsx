@@ -8,6 +8,10 @@ export const AuthProvider = ({ children }) => {
 
   // Login: query employees table by email + password
   const login = async (email, password) => {
+    // Debug: check if env vars are loaded
+    console.log('Supabase URL:', import.meta.env.VITE_SUPABASE_URL ? 'SET ✓' : 'MISSING ✗');
+    console.log('Supabase Key:', import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ? 'SET ✓' : 'MISSING ✗');
+
     const { data, error } = await supabase
       .from('employees')
       .select('*')
@@ -16,7 +20,13 @@ export const AuthProvider = ({ children }) => {
       .single();
 
     if (error || !data) {
-      return { success: false, message: 'Invalid email or password.' };
+      console.error('Login error:', error?.message, '| Code:', error?.code, '| Details:', error?.details);
+      const msg = error?.code === 'PGRST116' 
+        ? 'No account found with those credentials.'
+        : error?.message?.includes('fetch') || error?.message?.includes('network')
+        ? 'Cannot reach the database. Check Supabase environment variables in Vercel.'
+        : 'Invalid email or password.';
+      return { success: false, message: msg };
     }
 
     setUser(data);
