@@ -86,6 +86,9 @@ const Leave = () => {
   const [showGrantModal, setShowGrantModal] = useState(false);
   const [historyMonth, setHistoryMonth] = useState('');
   const [historyDepartment, setHistoryDepartment] = useState('');
+  const [selectedLeaveReason, setSelectedLeaveReason] = useState(null); // { reason, type }
+  const [rejectTarget, setRejectTarget] = useState(null); // { id } to reject
+  const [rejectComment, setRejectComment] = useState('');
 
   const balance = user ? getUserBalance(user.id) : {};
   const myRequests = getMyRequests();
@@ -274,7 +277,13 @@ const Leave = () => {
                           <td>{row.from_date || row.from}</td>
                           <td>{row.to_date || row.to}</td>
                           <td><strong>{row.days}</strong></td>
-                          <td style={{ maxWidth: 150, color: '#707EAE' }}>{row.reason || '—'}</td>
+                          <td
+                            style={{ maxWidth: 150, color: '#707EAE', cursor: row.reason ? 'pointer' : 'default', textDecoration: row.reason ? 'underline dotted' : 'none' }}
+                            title={row.reason ? 'Click to view reason' : ''}
+                            onClick={() => row.reason && setSelectedLeaveReason({ reason: row.reason, type: row.type, comment: row.rejection_comment })}
+                          >
+                            {row.reason ? (row.reason.length > 30 ? row.reason.slice(0, 30) + '...' : row.reason) : '—'}
+                          </td>
                           <td style={{ color: '#A3AED0' }}>{new Date(row.created_at || row.appliedOn || new Date()).toLocaleDateString()}</td>
                           <td>{statusBadge(row.status)}</td>
                         </tr>
@@ -342,20 +351,32 @@ const Leave = () => {
                           {canApprove && (
                             <td>
                               <div className="leave-action-btns">
-                                <button
-                                  className="leave-action-approve"
-                                  onClick={() => approveLeave(row.id, row.employee_id, row.type, row.days)}
-                                  title="Approve"
-                                >
-                                  <i className="ri-check-line" /> Approve
-                                </button>
-                                <button
-                                  className="leave-action-reject"
-                                  onClick={() => rejectLeave(row.id)}
-                                  title="Reject"
-                                >
-                                  <i className="ri-close-line" /> Reject
-                                </button>
+                                {row.status === 'Pending' && (
+                                  <>
+                                    <button
+                                      className="leave-action-approve"
+                                      onClick={() => approveLeave(row.id, row.employee_id, row.type, row.days)}
+                                      title="Approve"
+                                    >
+                                      <i className="ri-check-line" /> Approve
+                                    </button>
+                                    <button
+                                      className="leave-action-reject"
+                                      onClick={() => { setRejectTarget(row); setRejectComment(''); }}
+                                      title="Reject"
+                                    >
+                                      <i className="ri-close-line" /> Reject
+                                    </button>
+                                  </>
+                                )}
+                                {row.reason && (
+                                  <button
+                                    style={{ background: 'none', border: '1px solid #A3AED0', borderRadius: 6, padding: '0.25rem 0.6rem', cursor: 'pointer', color: '#707EAE', fontSize: '0.8rem' }}
+                                    onClick={() => setSelectedLeaveReason({ reason: row.reason, type: row.type, comment: row.rejection_comment })}
+                                  >
+                                    <i className="ri-eye-line" /> View
+                                  </button>
+                                )}
                               </div>
                             </td>
                           )}
@@ -531,6 +552,70 @@ const Leave = () => {
           onClose={() => setShowGrantModal(false)} 
           onGrant={handleGrant} 
         />
+      )}
+
+      {/* Reason View Modal */}
+      {selectedLeaveReason && (
+        <div className="salary-modal-overlay" onClick={() => setSelectedLeaveReason(null)}>
+          <div className="salary-modal" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
+            <div className="salary-modal-header">
+              <div>
+                <h3 className="salary-modal-title">Leave Details</h3>
+                <p className="salary-modal-sub" style={{ textTransform: 'capitalize' }}>{selectedLeaveReason.type}</p>
+              </div>
+              <button className="salary-modal-close" onClick={() => setSelectedLeaveReason(null)}><i className="ri-close-line" /></button>
+            </div>
+            <div style={{ padding: '0 0 1rem' }}>
+              <p style={{ fontSize: '0.85rem', color: '#64748B', marginBottom: '0.25rem', fontWeight: 600 }}>Reason</p>
+              <p style={{ color: '#1E293B', lineHeight: 1.6 }}>{selectedLeaveReason.reason || '—'}</p>
+              {selectedLeaveReason.comment && (
+                <div style={{ marginTop: '1rem', padding: '0.75rem 1rem', background: '#FFF2F2', borderRadius: 8, borderLeft: '4px solid #EE5D50' }}>
+                  <p style={{ fontSize: '0.85rem', color: '#EE5D50', fontWeight: 600, marginBottom: '0.25rem' }}>Rejection Comment</p>
+                  <p style={{ color: '#7F1D1D', lineHeight: 1.6 }}>{selectedLeaveReason.comment}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject with Comment Modal */}
+      {rejectTarget && (
+        <div className="salary-modal-overlay" onClick={() => setRejectTarget(null)}>
+          <div className="salary-modal" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
+            <div className="salary-modal-header">
+              <div>
+                <h3 className="salary-modal-title">Reject Leave Request</h3>
+                <p className="salary-modal-sub">Add a comment for {rejectTarget.employees?.name}</p>
+              </div>
+              <button className="salary-modal-close" onClick={() => setRejectTarget(null)}><i className="ri-close-line" /></button>
+            </div>
+            <div className="salary-field">
+              <label className="salary-field-label">Rejection Comment <span style={{ color: '#A3AED0', fontWeight: 400 }}>(optional)</span></label>
+              <textarea
+                className="salary-input"
+                style={{ minHeight: 100, resize: 'none' }}
+                placeholder="Explain why the leave is being rejected..."
+                value={rejectComment}
+                onChange={e => setRejectComment(e.target.value)}
+              />
+            </div>
+            <div className="salary-modal-actions">
+              <button className="salary-cancel-btn" onClick={() => setRejectTarget(null)}>Cancel</button>
+              <button
+                className="salary-submit-btn"
+                style={{ background: '#EE5D50' }}
+                onClick={async () => {
+                  await rejectLeave(rejectTarget.id, rejectComment);
+                  setRejectTarget(null);
+                  setRejectComment('');
+                }}
+              >
+                <i className="ri-close-circle-line" /> Confirm Reject
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </Layout>
   );

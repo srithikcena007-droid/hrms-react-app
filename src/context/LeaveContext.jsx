@@ -108,11 +108,11 @@ export const LeaveProvider = ({ children }) => {
   };
 
   // Reject a leave request (only superadmin)
-  const rejectLeave = async (requestId) => {
+  const rejectLeave = async (requestId, comment = '') => {
     if (user?.role !== 'superadmin') return;
 
     const { error } = await supabase.from('leaves')
-      .update({ status: 'Rejected' })
+      .update({ status: 'Rejected', rejection_comment: comment })
       .eq('id', requestId);
 
     if (!error) {

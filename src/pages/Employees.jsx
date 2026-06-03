@@ -4,7 +4,7 @@ import Layout from '../components/Layout';
 import { AuthContext } from '../context/AuthContext';
 import { supabase } from '../utils/supabaseClient';
 
-const EmployeeModal = ({ onClose, onSave, initialData }) => {
+const EmployeeModal = ({ onClose, onSave, initialData, user }) => {
   const isEditing = !!initialData?.id;
   const [empCode, setEmpCode] = useState(initialData?.emp_code || '');
   const [name, setName] = useState(initialData?.name || '');
@@ -291,6 +291,7 @@ const Employees = () => {
       {showModal && (
         <EmployeeModal
           initialData={editingEmployee}
+          user={user}
           onClose={() => {
             setShowModal(false);
             setEditingEmployee(null);
