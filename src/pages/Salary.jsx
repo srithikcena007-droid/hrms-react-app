@@ -73,7 +73,7 @@ const PaymentHistoryTable = ({ payments, onDownload }) => (
 );
 
 /* ── All payments table (superadmin view) ── */
-const AllPaymentsTable = ({ payments, onDownload }) => (
+const AllPaymentsTable = ({ payments, onDownload, onDelete }) => (
   payments.length === 0 ? (
     <div className="salary-empty-state">
       <i className="ri-money-dollar-circle-line" />
@@ -106,9 +106,14 @@ const AllPaymentsTable = ({ payments, onDownload }) => (
               <td>{fmt(row.amountPaid)}</td>
               <td>{row.paymentDate}</td>
               <td>
-                <button className="salary-payslip-btn" onClick={() => onDownload(row)}>
-                  <i className="ri-download-2-line" /> Payslip
-                </button>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button className="salary-payslip-btn" onClick={() => onDownload(row)}>
+                    <i className="ri-download-2-line" /> Payslip
+                  </button>
+                  <button className="salary-payslip-btn" style={{ background: '#FFF0F0', color: '#C62828', border: '1px solid #FFCDD2' }} onClick={() => { if(window.confirm('Are you sure you want to delete this payment?')) onDelete(row.id); }}>
+                    <i className="ri-delete-bin-line" />
+                  </button>
+                </div>
               </td>
             </tr>
           ))}
@@ -135,6 +140,7 @@ const AddPaymentModal = ({ onClose, onAdd }) => {
   const [pf, setPf] = useState('0');
   const [tds, setTds] = useState('0');
   const [professionalTax, setProfessionalTax] = useState('0');
+  const [lopDays, setLopDays] = useState('0');
   const [lopAmount, setLopAmount] = useState('0');
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -172,6 +178,7 @@ const AddPaymentModal = ({ onClose, onAdd }) => {
       pf,
       tds,
       professionalTax,
+      lopDays,
       lopAmount
     });
   };
@@ -275,6 +282,12 @@ const AddPaymentModal = ({ onClose, onAdd }) => {
               <label className="salary-field-label">Professional Tax</label>
               <input className="salary-input" type="number" value={professionalTax} onChange={e => setProfessionalTax(e.target.value)} min="0" />
             </div>
+          </div>
+          <div className="salary-field-row">
+            <div className="salary-field">
+              <label className="salary-field-label">LOP Days</label>
+              <input className="salary-input" type="number" value={lopDays} onChange={e => setLopDays(e.target.value)} min="0" max="31" />
+            </div>
             <div className="salary-field">
               <label className="salary-field-label">LOP Amount</label>
               <input className="salary-input" type="number" value={lopAmount} onChange={e => setLopAmount(e.target.value)} min="0" />
@@ -317,7 +330,7 @@ const Toast = ({ message, onClose }) => {
 ══════════════════════════════════════════════════════ */
 const Salary = () => {
   const { user } = useContext(AuthContext);
-  const { getUserPayments, getAllPayments, addPayment } = useContext(SalaryContext);
+  const { getUserPayments, getAllPayments, addPayment, deletePayment } = useContext(SalaryContext);
 
   const isSuperAdmin = user?.role === 'superadmin';
   // superadmin gets two tabs; others only see own payslips
@@ -339,6 +352,15 @@ const Salary = () => {
     if (res.success) {
       setShowModal(false);
       setToast(`Salary payment added!`);
+    } else {
+      setToast(`Error: ${res.message}`);
+    }
+  };
+
+  const handleDeletePayment = async (id) => {
+    const res = await deletePayment(id);
+    if (res.success) {
+      setToast('Salary payment deleted successfully.');
     } else {
       setToast(`Error: ${res.message}`);
     }
@@ -422,7 +444,7 @@ const Salary = () => {
               <p className="salary-section-sub">View all salary payments made to employees</p>
             </div>
           </div>
-          <AllPaymentsTable payments={allPayments} onDownload={handleDownload} />
+          <AllPaymentsTable payments={allPayments} onDownload={handleDownload} onDelete={handleDeletePayment} />
         </div>
       )}
 

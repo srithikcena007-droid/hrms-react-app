@@ -72,8 +72,8 @@ export const SalaryProvider = ({ children }) => {
       amount_paid: Number(data.amountPaid),
       payment_date: data.paymentDate, // Expecting YYYY-MM-DD for DB
       month_days: 30,
-      paid_days: 30,
-      lop_days: 0,
+      paid_days: 30 - Number(data.lopDays || 0),
+      lop_days: Number(data.lopDays || 0),
       lop_amount: Number(data.lopAmount || 0),
       basic_amount: Number(data.basic || 0),
       hra_amount: Number(data.hra || 0),
@@ -103,8 +103,23 @@ export const SalaryProvider = ({ children }) => {
   const getUserPayments = (userId) => payments.filter(p => p.userId === userId);
   const getAllPayments = () => payments;
 
+  const deletePayment = async (id) => {
+    const { error } = await supabase
+      .from('salary_payments')
+      .delete()
+      .eq('id', id);
+
+    if (!error) {
+      setPayments(prev => prev.filter(p => p.id !== id));
+      return { success: true };
+    } else {
+      console.error('Error deleting payment:', error);
+      return { success: false, message: error.message };
+    }
+  };
+
   return (
-    <SalaryContext.Provider value={{ payments, addPayment, getUserPayments, getAllPayments, ALL_USERS: allUsers }}>
+    <SalaryContext.Provider value={{ payments, addPayment, deletePayment, getUserPayments, getAllPayments, ALL_USERS: allUsers }}>
       {children}
     </SalaryContext.Provider>
   );
