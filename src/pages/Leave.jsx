@@ -7,8 +7,8 @@ import { supabase } from '../utils/supabaseClient';
 const LEAVE_TYPES = ['Sick Leave', 'Comp Off', 'Casual Leave'];
 
 const LEAVE_COLORS = {
-  'Sick Leave':   { bg: '#FFF2F2', color: '#EE5D50', icon: 'ri-heart-pulse-line' },
-  'Comp Off':     { bg: '#EDF4FE', color: '#4318FF', icon: 'ri-sun-line' },
+  'Sick Leave': { bg: '#FFF2F2', color: '#EE5D50', icon: 'ri-heart-pulse-line' },
+  'Comp Off': { bg: '#EDF4FE', color: '#4318FF', icon: 'ri-sun-line' },
   'Casual Leave': { bg: '#F0FDF9', color: '#00A884', icon: 'ri-umbrella-line' },
 };
 
@@ -74,14 +74,14 @@ const GrantCompOffModal = ({ onClose, onGrant }) => {
 
 const Leave = () => {
   const { user } = useContext(AuthContext);
-  const { 
-    applyLeave, getUserBalance, getMyRequests, getPendingForApproval, 
-    approveLeave, rejectLeave, grantCompOff, getLeaveHistory, loading 
+  const {
+    applyLeave, getUserBalance, getMyRequests, getPendingForApproval,
+    approveLeave, rejectLeave, grantCompOff, getLeaveHistory, loading
   } = useContext(LeaveContext);
 
   const [activeTab, setActiveTab] = useState('my');
   const [form, setForm] = useState({ type: 'Sick Leave', from: '', to: '', reason: '' });
-  const [formMsg, setFormMsg] = useState(null); 
+  const [formMsg, setFormMsg] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [showGrantModal, setShowGrantModal] = useState(false);
   const [historyMonth, setHistoryMonth] = useState('');
@@ -303,7 +303,7 @@ const Leave = () => {
                 <i className="ri-history-line" /> Leave History
               </button>
             )}
-            
+
             {isSuperAdmin && (
               <button className="salary-add-btn" onClick={() => setShowGrantModal(true)} style={{ marginLeft: 'auto', background: '#4318FF' }}>
                 <i className="ri-award-line" /> Grant Comp Off
@@ -314,260 +314,260 @@ const Leave = () => {
           {/* Top/Left: History or Approvals */}
           <div className="card">
 
-          {/* My Leaves Tab */}
-          {activeTab === 'my' && (
-            <>
-              <div className="leave-section-header">
-                <h3 className="font-bold">My Leave History</h3>
-                <span className="text-muted text-sm">{myRequests.length} request{myRequests.length !== 1 ? 's' : ''}</span>
-              </div>
-              {myRequests.length === 0 ? (
-                <div className="leave-empty">
-                  <i className="ri-calendar-2-line" />
-                  <p>No leave requests yet. Apply for a leave to get started.</p>
+            {/* My Leaves Tab */}
+            {activeTab === 'my' && (
+              <>
+                <div className="leave-section-header">
+                  <h3 className="font-bold">My Leave History</h3>
+                  <span className="text-muted text-sm">{myRequests.length} request{myRequests.length !== 1 ? 's' : ''}</span>
                 </div>
-              ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Leave Type</th>
-                        <th>From</th>
-                        <th>To</th>
-                        <th>Days</th>
-                        <th>Status</th>
-                        <th>Applied On</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {myRequests.map(row => (
-                        <tr key={row.id}>
-                          <td>
-                            <span className="leave-type-pill" style={{
-                              background: LEAVE_COLORS[row.type]?.bg,
-                              color: LEAVE_COLORS[row.type]?.color
-                            }}>
-                              <i className={LEAVE_COLORS[row.type]?.icon} /> {row.type}
-                            </span>
-                          </td>
-                          <td>{row.from_date || row.from}</td>
-                          <td>{row.to_date || row.to}</td>
-                          <td><strong>{row.days}</strong></td>
-                          <td>{statusBadge(row.status)}</td>
-                          <td style={{ color: '#A3AED0' }}>{new Date(row.created_at || row.appliedOn || new Date()).toLocaleDateString()}</td>
-                          <td>
-                            <button
-                              style={{ background: 'none', border: '1px solid #CBD5E1', borderRadius: 6, padding: '0.25rem 0.6rem', cursor: 'pointer', color: '#4318FF', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
-                              onClick={() => setSelectedLeaveReason({ reason: row.reason || 'No reason provided.', type: row.type, comment: row.rejection_comment, status: row.status })}
-                            >
-                              <i className="ri-eye-line" /> View
-                            </button>
-                          </td>
+                {myRequests.length === 0 ? (
+                  <div className="leave-empty">
+                    <i className="ri-calendar-2-line" />
+                    <p>No leave requests yet. Apply for a leave to get started.</p>
+                  </div>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Leave Type</th>
+                          <th>From</th>
+                          <th>To</th>
+                          <th>Days</th>
+                          <th>Status</th>
+                          <th>Applied On</th>
+                          <th></th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* Pending Approvals Tab */}
-          {activeTab === 'approvals' && canViewApprovals && (
-            <>
-              <div className="leave-section-header">
-                <h3 className="font-bold">{isSuperAdmin ? 'Pending Approvals' : 'Department Approvals'}</h3>
-                <span className="text-muted text-sm">{pendingApprovals.length} pending</span>
-              </div>
-              {pendingApprovals.length === 0 ? (
-                <div className="leave-empty">
-                  <i className="ri-checkbox-circle-line" />
-                  <p>No pending leave requests to review.</p>
-                </div>
-              ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Employee</th>
-                        <th>Role</th>
-                        <th>Leave Type</th>
-                        <th>From</th>
-                        <th>To</th>
-                        <th>Days</th>
-                        <th>Status</th>
-                        <th></th>
-                        {canApprove && <th>Actions</th>}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pendingApprovals.map(row => (
-                        <tr key={row.id}>
-                          <td>
-                            <div className="leave-approval-user">
-                              <div className="leave-approval-avatar">
-                                {(row.employees?.name || row.userName || 'User').split(' ').map(n => n[0]).join('').slice(0, 2)}
-                              </div>
-                              <span>{row.employees?.name || row.userName}</span>
-                            </div>
-                          </td>
-                          <td>
-                            <span className="badge primary">{roleLabel(row.employees?.role || row.userRole)}</span>
-                          </td>
-                          <td>
-                            <span className="leave-type-pill" style={{
-                              background: LEAVE_COLORS[row.type]?.bg,
-                              color: LEAVE_COLORS[row.type]?.color
-                            }}>
-                              <i className={LEAVE_COLORS[row.type]?.icon} /> {row.type}
-                            </span>
-                          </td>
-                          <td>{row.from_date || row.from}</td>
-                          <td>{row.to_date || row.to}</td>
-                          <td><strong>{row.days}</strong></td>
-                          <td>{statusBadge(row.status)}</td>
-                          <td>
-                            <button
-                              style={{ background: 'none', border: '1px solid #CBD5E1', borderRadius: 6, padding: '0.25rem 0.6rem', cursor: 'pointer', color: '#4318FF', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
-                              onClick={() => setSelectedLeaveReason({ reason: row.reason || 'No reason provided.', type: row.type, comment: row.rejection_comment, status: row.status })}
-                            >
-                              <i className="ri-eye-line" /> View
-                            </button>
-                          </td>
-                          {canApprove && (
+                      </thead>
+                      <tbody>
+                        {myRequests.map(row => (
+                          <tr key={row.id}>
                             <td>
-                              <div className="leave-action-btns">
-                                {row.status === 'Pending' && (
-                                  <>
-                                    <button
-                                      className="leave-action-approve"
-                                      onClick={() => approveLeave(row.id, row.employee_id, row.type, row.days)}
-                                      title="Approve"
-                                    >
-                                      <i className="ri-check-line" /> Approve
-                                    </button>
-                                    <button
-                                      className="leave-action-reject"
-                                      onClick={() => { setRejectTarget(row); setRejectComment(''); }}
-                                      title="Reject"
-                                    >
-                                      <i className="ri-close-line" /> Reject
-                                    </button>
-                                  </>
-                                )}
+                              <span className="leave-type-pill" style={{
+                                background: LEAVE_COLORS[row.type]?.bg,
+                                color: LEAVE_COLORS[row.type]?.color
+                              }}>
+                                <i className={LEAVE_COLORS[row.type]?.icon} /> {row.type}
+                              </span>
+                            </td>
+                            <td>{row.from_date || row.from}</td>
+                            <td>{row.to_date || row.to}</td>
+                            <td><strong>{row.days}</strong></td>
+                            <td>{statusBadge(row.status)}</td>
+                            <td style={{ color: '#A3AED0' }}>{new Date(row.created_at || row.appliedOn || new Date()).toLocaleDateString()}</td>
+                            <td>
+                              <button
+                                style={{ background: 'none', border: '1px solid #CBD5E1', borderRadius: 6, padding: '0.25rem 0.6rem', cursor: 'pointer', color: '#4318FF', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
+                                onClick={() => setSelectedLeaveReason({ reason: row.reason || 'No reason provided.', type: row.type, comment: row.rejection_comment, status: row.status })}
+                              >
+                                <i className="ri-eye-line" /> View
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Pending Approvals Tab */}
+            {activeTab === 'approvals' && canViewApprovals && (
+              <>
+                <div className="leave-section-header">
+                  <h3 className="font-bold">{isSuperAdmin ? 'Pending Approvals' : 'Department Approvals'}</h3>
+                  <span className="text-muted text-sm">{pendingApprovals.length} pending</span>
+                </div>
+                {pendingApprovals.length === 0 ? (
+                  <div className="leave-empty">
+                    <i className="ri-checkbox-circle-line" />
+                    <p>No pending leave requests to review.</p>
+                  </div>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Employee</th>
+                          <th>Role</th>
+                          <th>Leave Type</th>
+                          <th>From</th>
+                          <th>To</th>
+                          <th>Days</th>
+                          <th>Status</th>
+                          <th></th>
+                          {canApprove && <th>Actions</th>}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pendingApprovals.map(row => (
+                          <tr key={row.id}>
+                            <td>
+                              <div className="leave-approval-user">
+                                <div className="leave-approval-avatar">
+                                  {(row.employees?.name || row.userName || 'User').split(' ').map(n => n[0]).join('').slice(0, 2)}
+                                </div>
+                                <span>{row.employees?.name || row.userName}</span>
                               </div>
                             </td>
-                          )}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </>
-          )}
+                            <td>
+                              <span className="badge primary">{roleLabel(row.employees?.role || row.userRole)}</span>
+                            </td>
+                            <td>
+                              <span className="leave-type-pill" style={{
+                                background: LEAVE_COLORS[row.type]?.bg,
+                                color: LEAVE_COLORS[row.type]?.color
+                              }}>
+                                <i className={LEAVE_COLORS[row.type]?.icon} /> {row.type}
+                              </span>
+                            </td>
+                            <td>{row.from_date || row.from}</td>
+                            <td>{row.to_date || row.to}</td>
+                            <td><strong>{row.days}</strong></td>
+                            <td>{statusBadge(row.status)}</td>
+                            <td>
+                              <button
+                                style={{ background: 'none', border: '1px solid #CBD5E1', borderRadius: 6, padding: '0.25rem 0.6rem', cursor: 'pointer', color: '#46ff18ff', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
+                                onClick={() => setSelectedLeaveReason({ reason: row.reason || 'No reason provided.', type: row.type, comment: row.rejection_comment, status: row.status })}
+                              >
+                                <i className="ri-eye-line" /> View
+                              </button>
+                            </td>
+                            {canApprove && (
+                              <td>
+                                <div className="leave-action-btns">
+                                  {row.status === 'Pending' && (
+                                    <>
+                                      <button
+                                        className="leave-action-approve"
+                                        onClick={() => approveLeave(row.id, row.employee_id, row.type, row.days)}
+                                        title="Approve"
+                                      >
+                                        <i className="ri-check-line" /> Approve
+                                      </button>
+                                      <button
+                                        className="leave-action-reject"
+                                        onClick={() => { setRejectTarget(row); setRejectComment(''); }}
+                                        title="Reject"
+                                      >
+                                        <i className="ri-close-line" /> Reject
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </td>
+                            )}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            )}
 
-          {/* Leave History Tab */}
-          {activeTab === 'history' && canViewApprovals && (
-            <>
-              <div className="leave-section-header">
-                <h3 className="font-bold">Leave History</h3>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                  <input 
-                    type="month" 
-                    className="salary-input" 
-                    value={historyMonth} 
-                    onChange={e => setHistoryMonth(e.target.value)}
-                    style={{ padding: '0.25rem 0.5rem', margin: 0, width: '150px' }}
-                  />
-                  {isSuperAdmin && (
-                    <select 
-                      className="salary-input" 
-                      value={historyDepartment} 
-                      onChange={e => setHistoryDepartment(e.target.value)}
+            {/* Leave History Tab */}
+            {activeTab === 'history' && canViewApprovals && (
+              <>
+                <div className="leave-section-header">
+                  <h3 className="font-bold">Leave History</h3>
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <input
+                      type="month"
+                      className="salary-input"
+                      value={historyMonth}
+                      onChange={e => setHistoryMonth(e.target.value)}
                       style={{ padding: '0.25rem 0.5rem', margin: 0, width: '150px' }}
-                    >
-                      <option value="">All Departments</option>
-                      <option value="Development">Development</option>
-                      <option value="Design">Design</option>
-                      <option value="Operations">Operations</option>
-                      <option value="Sales">Sales</option>
-                    </select>
-                  )}
+                    />
+                    {isSuperAdmin && (
+                      <select
+                        className="salary-input"
+                        value={historyDepartment}
+                        onChange={e => setHistoryDepartment(e.target.value)}
+                        style={{ padding: '0.25rem 0.5rem', margin: 0, width: '150px' }}
+                      >
+                        <option value="">All Departments</option>
+                        <option value="Development">Development</option>
+                        <option value="Design">Design</option>
+                        <option value="Operations">Operations</option>
+                        <option value="Sales">Sales</option>
+                      </select>
+                    )}
+                  </div>
                 </div>
-              </div>
-              {filteredHistory.length === 0 ? (
-                <div className="leave-empty">
-                  <i className="ri-history-line" />
-                  <p>No leave history found for the selected filters.</p>
-                </div>
-              ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Employee</th>
-                        <th>Role</th>
-                        <th>Leave Type</th>
-                        <th>From</th>
-                        <th>To</th>
-                        <th>Days</th>
-                        <th>Status</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredHistory.map(row => (
-                        <tr key={row.id}>
-                          <td>
-                            <div className="leave-approval-user">
-                              <div className="leave-approval-avatar">
-                                {(row.employees?.name || row.userName || 'User').split(' ').map(n => n[0]).join('').slice(0, 2)}
-                              </div>
-                              <span>{row.employees?.name || row.userName}</span>
-                            </div>
-                          </td>
-                          <td>
-                            <span className="badge primary">{roleLabel(row.employees?.role || row.userRole)}</span>
-                          </td>
-                          <td>
-                            <span className="leave-type-pill" style={{
-                              background: LEAVE_COLORS[row.type]?.bg,
-                              color: LEAVE_COLORS[row.type]?.color
-                            }}>
-                              <i className={LEAVE_COLORS[row.type]?.icon} /> {row.type}
-                            </span>
-                          </td>
-                          <td>{row.from_date || row.from}</td>
-                          <td>{row.to_date || row.to}</td>
-                          <td><strong>{row.days}</strong></td>
-                          <td>{statusBadge(row.status)}</td>
-                          <td>
-                            <button
-                              style={{ background: 'none', border: '1px solid #CBD5E1', borderRadius: 6, padding: '0.25rem 0.6rem', cursor: 'pointer', color: '#4318FF', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
-                              onClick={() => setSelectedLeaveReason({ reason: row.reason || 'No reason provided.', type: row.type, comment: row.rejection_comment, status: row.status })}
-                            >
-                              <i className="ri-eye-line" /> View
-                            </button>
-                          </td>
+                {filteredHistory.length === 0 ? (
+                  <div className="leave-empty">
+                    <i className="ri-history-line" />
+                    <p>No leave history found for the selected filters.</p>
+                  </div>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Employee</th>
+                          <th>Role</th>
+                          <th>Leave Type</th>
+                          <th>From</th>
+                          <th>To</th>
+                          <th>Days</th>
+                          <th>Status</th>
+                          <th></th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </>
-          )}
-        </div>
+                      </thead>
+                      <tbody>
+                        {filteredHistory.map(row => (
+                          <tr key={row.id}>
+                            <td>
+                              <div className="leave-approval-user">
+                                <div className="leave-approval-avatar">
+                                  {(row.employees?.name || row.userName || 'User').split(' ').map(n => n[0]).join('').slice(0, 2)}
+                                </div>
+                                <span>{row.employees?.name || row.userName}</span>
+                              </div>
+                            </td>
+                            <td>
+                              <span className="badge primary">{roleLabel(row.employees?.role || row.userRole)}</span>
+                            </td>
+                            <td>
+                              <span className="leave-type-pill" style={{
+                                background: LEAVE_COLORS[row.type]?.bg,
+                                color: LEAVE_COLORS[row.type]?.color
+                              }}>
+                                <i className={LEAVE_COLORS[row.type]?.icon} /> {row.type}
+                              </span>
+                            </td>
+                            <td>{row.from_date || row.from}</td>
+                            <td>{row.to_date || row.to}</td>
+                            <td><strong>{row.days}</strong></td>
+                            <td>{statusBadge(row.status)}</td>
+                            <td>
+                              <button
+                                style={{ background: 'none', border: '1px solid #CBD5E1', borderRadius: 6, padding: '0.25rem 0.6rem', cursor: 'pointer', color: '#4318FF', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
+                                onClick={() => setSelectedLeaveReason({ reason: row.reason || 'No reason provided.', type: row.type, comment: row.rejection_comment, status: row.status })}
+                              >
+                                <i className="ri-eye-line" /> View
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
 
         </div>
       </div>
-      
+
       {showGrantModal && (
-        <GrantCompOffModal 
-          onClose={() => setShowGrantModal(false)} 
-          onGrant={handleGrant} 
+        <GrantCompOffModal
+          onClose={() => setShowGrantModal(false)}
+          onGrant={handleGrant}
         />
       )}
 

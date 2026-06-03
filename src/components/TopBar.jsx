@@ -109,13 +109,6 @@ const TopBar = ({ title }) => {
               >
                 <i className="ri-image-edit-line"></i> Change Picture
               </div>
-              <input
-                type="file"
-                accept="image/*"
-                ref={fileInputRef}
-                style={{ display: 'none' }}
-                onChange={handleFileSelect}
-              />
               <div
                 style={{ padding: '0.75rem 1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-main)', transition: 'background 0.2s' }}
                 onMouseOver={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.03)'}
@@ -137,6 +130,14 @@ const TopBar = ({ title }) => {
           )}
         </div>
       </div>
+
+      <input
+        type="file"
+        accept="image/*"
+        ref={fileInputRef}
+        style={{ display: 'none' }}
+        onChange={handleFileSelect}
+      />
 
       {/* Crop Preview Modal */}
       {cropModal && (
