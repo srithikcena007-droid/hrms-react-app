@@ -327,8 +327,6 @@ const Dashboard = () => {
           <div className="card">
             <h3 className="font-bold mb-4" style={{ fontSize: '1.125rem', color: 'var(--text-main)' }}>Attendance</h3>
             
-            {isEmployee ? (
-              <>
                 {attendanceStatus === 'not_checked_in' && (
                   <div>
                     <div className="alert-banner warning">
@@ -366,10 +364,6 @@ const Dashboard = () => {
                     </div>
                   </div>
                 )}
-              </>
-            ) : (
-              <p className="text-muted text-sm">Today's attendance overview is shown in the stats card above.</p>
-            )}
           </div>
 
         </div> {/* End Left Column */}
