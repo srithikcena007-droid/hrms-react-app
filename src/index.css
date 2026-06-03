@@ -16,19 +16,25 @@
   --shadow: 0px 18px 40px rgba(112, 144, 176, 0.12);
   --radius: 20px;
   --transition: all 0.3s ease;
+  --font-primary: 'Readex Pro', sans-serif;
+  --font-secondary: 'Instrument Sans', sans-serif;
 }
 
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-primary);
 }
 
 body {
   background-color: var(--bg-main);
   color: var(--text-main);
   overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6, .page-title {
+  font-family: var(--font-secondary);
 }
 
 /* Utilities */
