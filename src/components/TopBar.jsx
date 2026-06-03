@@ -1,4 +1,5 @@
 import React, { useContext, useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { AuthContext } from '../context/AuthContext';
 import { supabase } from '../utils/supabaseClient';
 import { useNavigate } from 'react-router-dom';
@@ -30,13 +31,18 @@ const TopBar = ({ title }) => {
   }, []);
 
   const handleFileSelect = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const objectUrl = URL.createObjectURL(file);
-    setCropModal({ objectUrl });
-    setDropdownOpen(false);
-    // reset input so same file can be selected again
-    e.target.value = '';
+    try {
+      const file = e.target.files[0];
+      if (!file) return;
+      const objectUrl = URL.createObjectURL(file);
+      setCropModal({ objectUrl });
+      setDropdownOpen(false);
+    } catch (err) {
+      alert("Error processing file: " + err.message);
+    } finally {
+      // reset input so same file can be selected again
+      e.target.value = '';
+    }
   };
 
   const handleCropSave = async (objectUrl) => {
@@ -140,11 +146,11 @@ const TopBar = ({ title }) => {
       />
 
       {/* Crop Preview Modal */}
-      {cropModal && (
+      {cropModal && createPortal(
         <div
           style={{
             position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999999
           }}
           onClick={(e) => { if (e.target === e.currentTarget) { URL.revokeObjectURL(cropModal.objectUrl); setCropModal(null); } }}
         >
@@ -175,7 +181,8 @@ const TopBar = ({ title }) => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
