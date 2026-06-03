@@ -31,22 +31,28 @@ const toWords = (amount) => {
 
 const fmt = (n) => `\u20B9 ${Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
 
-export const generatePayslip = (payment, config) => {
+export const generatePayslip = (payment) => {
   const {
     month, year, paymentDate, paidDays = 31, lopDays = 0, lopAmount = 0, monthDays = 31,
-    empCode, userName,
+    empCode, userName, amountPaid = 0,
+    basic = 0, hra = 0, conveyance = 0, specialAllowance = 0,
+    pf = 0, tds = 0, professionalTax = 0
   } = payment;
 
-  const {
-    designation = '', dateOfJoining = '', ctc = 0,
-    basic = 0, hra = 0, cca = 0, conveyance = 0, specialAllowance = 0,
-    totalEarnings = 0,
-    pf = 0, esic = 0, tds = 0, professionalTax = 0, loanRepayment = 0,
-    totalDeductions = 0, net = 0,
-  } = config || {};
+  const cca = 0;
+  const esic = 0;
+  const loanRepayment = 0;
 
-  const netPay = payment.amountPaid || net;
+  const totalEarnings = Number(basic) + Number(hra) + Number(conveyance) + Number(specialAllowance);
+  const totalDeductions = Number(pf) + Number(tds) + Number(professionalTax) + Number(lopAmount);
+  
+  const netPay = amountPaid;
   const ref = `EMP/PS/${year}/${empCode}`;
+
+  // Default placeholders for fields not explicitly tracked in DB yet
+  const designation = 'Employee';
+  const dateOfJoining = 'N/A';
+  const ctc = totalEarnings * 12;
 
   const html = `<!DOCTYPE html>
 <html lang="en">

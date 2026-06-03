@@ -1,104 +1,110 @@
-import React, { createContext, useState } from 'react';
+import React, { createContext, useState, useEffect } from 'react';
+import { supabase } from '../utils/supabaseClient';
 
 export const SalaryContext = createContext();
 
-// Extended salary config matching Payslip Template fields
-export const SALARY_CONFIG = {
-  1: { // superadmin — Sarah Admin EMP001
-    empCode: 'EMP001',
-    name: 'Sarah Admin',
-    designation: 'Super Administrator',
-    dateOfJoining: '01/04/2022',
-    ctc: 1620000,
-    basic: 60000,
-    hra: 30000,
-    cca: 5000,
-    conveyance: 4000,
-    specialAllowance: 21000,
-    pf: 7200,
-    esic: 0,
-    tds: 5000,
-    professionalTax: 200,
-    loanRepayment: 0,
-    totalEarnings: 120000,
-    totalDeductions: 12400,
-    net: 107600,
-  },
-  2: { // admin — John Manager EMP002
-    empCode: 'EMP002',
-    name: 'John Manager',
-    designation: 'HR Manager',
-    dateOfJoining: '15/06/2021',
-    ctc: 1980000,
-    basic: 75000,
-    hra: 37500,
-    cca: 5000,
-    conveyance: 4500,
-    specialAllowance: 28000,
-    pf: 9000,
-    esic: 0,
-    tds: 8000,
-    professionalTax: 200,
-    loanRepayment: 0,
-    totalEarnings: 150000,
-    totalDeductions: 17200,
-    net: 132800,
-  },
-  3: { // employee — Alice Johnson EMP003
-    empCode: 'EMP003',
-    name: 'Alice Johnson',
-    designation: 'Software Engineer',
-    dateOfJoining: '01/09/2024',
-    ctc: 1260000,
-    basic: 50000,
-    hra: 25000,
-    cca: 3000,
-    conveyance: 3000,
-    specialAllowance: 19000,
-    pf: 6000,
-    esic: 750,
-    tds: 2000,
-    professionalTax: 200,
-    loanRepayment: 0,
-    totalEarnings: 100000,
-    totalDeductions: 8950,
-    net: 91050,
-  },
-};
-
-// All users list for superadmin dropdown
-export const ALL_USERS = [
-  { id: 1, name: 'Sarah Admin',   empCode: 'EMP001', role: 'superadmin' },
-  { id: 2, name: 'John Manager',  empCode: 'EMP002', role: 'admin' },
-  { id: 3, name: 'Alice Johnson', empCode: 'EMP003', role: 'employee' },
-];
-
-// Initial payment records
-const INITIAL_PAYMENTS = [
-  { id: 1, userId: 1, empCode: 'EMP001', userName: 'Sarah Admin',   month: 'March',     year: '2026', amountPaid: 107600, paymentDate: '31/03/2026', monthDays: 31, paidDays: 31, lopDays: 0, lopAmount: 0 },
-  { id: 2, userId: 3, empCode: 'EMP003', userName: 'Alice Johnson', month: 'September', year: '2025', amountPaid: 91050,  paymentDate: '30/09/2025', monthDays: 30, paidDays: 30, lopDays: 0, lopAmount: 0 },
-  { id: 3, userId: 3, empCode: 'EMP003', userName: 'Alice Johnson', month: 'August',    year: '2025', amountPaid: 91050,  paymentDate: '31/08/2025', monthDays: 31, paidDays: 31, lopDays: 0, lopAmount: 0 },
-];
-
 export const SalaryProvider = ({ children }) => {
-  const [payments, setPayments] = useState(INITIAL_PAYMENTS);
+  const [payments, setPayments] = useState([]);
+  const [allUsers, setAllUsers] = useState([]);
 
-  const addPayment = (data) => {
-    const newPayment = {
-      id: Date.now(),
-      ...data,
-      amountPaid: Number(data.amountPaid),
-      lopAmount: Number(data.lopAmount || 0),
+  // Fetch employees and payments on mount
+  useEffect(() => {
+    fetchEmployees();
+    fetchPayments();
+  }, []);
+
+  const fetchEmployees = async () => {
+    const { data, error } = await supabase
+      .from('employees')
+      .select('id, name, emp_code, role, email');
+    if (!error && data) {
+      // Map emp_code to empCode for compatibility
+      const mapped = data.map(u => ({
+        ...u,
+        empCode: u.emp_code || u.id.slice(0, 8).toUpperCase()
+      }));
+      setAllUsers(mapped);
+    }
+  };
+
+  const fetchPayments = async () => {
+    const { data, error } = await supabase
+      .from('salary_payments')
+      .select(`
+        *,
+        employees (name, emp_code)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (!error && data) {
+      const mapped = data.map(p => ({
+        id: p.id,
+        userId: p.employee_id,
+        empCode: p.employees?.emp_code || p.employee_id.slice(0,8).toUpperCase(),
+        userName: p.employees?.name || 'Unknown',
+        month: p.month,
+        year: String(p.year),
+        amountPaid: p.amount_paid,
+        paymentDate: p.payment_date,
+        monthDays: p.month_days || 30,
+        paidDays: p.paid_days || 30,
+        lopDays: p.lop_days || 0,
+        lopAmount: p.lop_amount || 0,
+        // New fields
+        basic: p.basic_amount || 0,
+        hra: p.hra_amount || 0,
+        conveyance: p.conveyance_amount || 0,
+        specialAllowance: p.special_allowance || 0,
+        pf: p.pf_amount || 0,
+        tds: p.tds_amount || 0,
+        professionalTax: p.professional_tax || 0
+      }));
+      setPayments(mapped);
+    }
+  };
+
+  const addPayment = async (data) => {
+    // Insert into DB
+    const insertPayload = {
+      employee_id: data.userId,
+      month: data.month,
+      year: parseInt(data.year),
+      amount_paid: Number(data.amountPaid),
+      payment_date: data.paymentDate, // Expecting YYYY-MM-DD for DB
+      month_days: 30,
+      paid_days: 30,
+      lop_days: 0,
+      lop_amount: Number(data.lopAmount || 0),
+      basic_amount: Number(data.basic || 0),
+      hra_amount: Number(data.hra || 0),
+      conveyance_amount: Number(data.conveyance || 0),
+      special_allowance: Number(data.specialAllowance || 0),
+      pf_amount: Number(data.pf || 0),
+      tds_amount: Number(data.tds || 0),
+      professional_tax: Number(data.professionalTax || 0)
     };
-    setPayments(prev => [newPayment, ...prev]);
-    return newPayment;
+
+    const { data: result, error } = await supabase
+      .from('salary_payments')
+      .insert([insertPayload])
+      .select()
+      .single();
+
+    if (!error) {
+      // Re-fetch to get joined employee data
+      fetchPayments();
+      return { success: true };
+    } else {
+      console.error('Error adding payment:', error);
+      return { success: false, message: error.message };
+    }
   };
 
   const getUserPayments = (userId) => payments.filter(p => p.userId === userId);
   const getAllPayments = () => payments;
 
   return (
-    <SalaryContext.Provider value={{ payments, addPayment, getUserPayments, getAllPayments, SALARY_CONFIG, ALL_USERS }}>
+    <SalaryContext.Provider value={{ payments, addPayment, getUserPayments, getAllPayments, ALL_USERS: allUsers }}>
       {children}
     </SalaryContext.Provider>
   );

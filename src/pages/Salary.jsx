@@ -1,7 +1,7 @@
 import React, { useState, useContext, useEffect, useRef } from 'react';
 import Layout from '../components/Layout';
 import { AuthContext } from '../context/AuthContext';
-import { SalaryContext, SALARY_CONFIG, ALL_USERS } from '../context/SalaryContext';
+import { SalaryContext } from '../context/SalaryContext';
 import { generatePayslip } from '../utils/generatePayslip';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -120,21 +120,33 @@ const AllPaymentsTable = ({ payments, onDownload }) => (
 
 /* ── Add Payment Modal ── */
 const AddPaymentModal = ({ onClose, onAdd }) => {
+  const { ALL_USERS } = useContext(SalaryContext);
+  
   const [selectedUserId, setSelectedUserId] = useState('');
   const [month, setMonth] = useState('');
   const [year, setYear] = useState(String(new Date().getFullYear()));
-  const [amountPaid, setAmountPaid] = useState('0');
   const [paymentDate, setPaymentDate] = useState('');
+  
+  // Salary Components
+  const [basic, setBasic] = useState('0');
+  const [hra, setHra] = useState('0');
+  const [conveyance, setConveyance] = useState('0');
+  const [specialAllowance, setSpecialAllowance] = useState('0');
+  const [pf, setPf] = useState('0');
+  const [tds, setTds] = useState('0');
+  const [professionalTax, setProfessionalTax] = useState('0');
+  const [lopAmount, setLopAmount] = useState('0');
+
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropRef = useRef(null);
 
-  const selectedUser = ALL_USERS.find(u => u.id === Number(selectedUserId));
-  const selectedConfig = selectedUser ? SALARY_CONFIG[selectedUser.id] : null;
+  // Dynamic user from ALL_USERS (fetched from DB)
+  const selectedUser = ALL_USERS.find(u => u.id === selectedUserId);
 
-  // Auto-fill amount when employee selected
-  useEffect(() => {
-    if (selectedConfig) setAmountPaid(String(selectedConfig.net));
-  }, [selectedUserId]);
+  // Calculate totals
+  const totalEarnings = Number(basic) + Number(hra) + Number(conveyance) + Number(specialAllowance);
+  const totalDeductions = Number(pf) + Number(tds) + Number(professionalTax) + Number(lopAmount);
+  const netSalary = totalEarnings - totalDeductions;
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -146,23 +158,27 @@ const AddPaymentModal = ({ onClose, onAdd }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!selectedUser || !month || !paymentDate) return;
-    // Format paymentDate from yyyy-mm-dd to dd/mm/yyyy
-    const [y, m, d] = paymentDate.split('-');
-    const fmtDate = `${d}/${m}/${y}`;
+    
     onAdd({
       userId: selectedUser.id,
-      empCode: selectedUser.empCode,
-      userName: selectedUser.name,
       month,
       year,
-      amountPaid,
-      paymentDate: fmtDate,
+      paymentDate,
+      amountPaid: netSalary,
+      basic,
+      hra,
+      conveyance,
+      specialAllowance,
+      pf,
+      tds,
+      professionalTax,
+      lopAmount
     });
   };
 
   return (
     <div className="salary-modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="salary-modal">
+      <div className="salary-modal" style={{ maxWidth: '600px' }}>
         <div className="salary-modal-header">
           <div>
             <h3 className="salary-modal-title">Add Salary Payment</h3>
@@ -171,7 +187,7 @@ const AddPaymentModal = ({ onClose, onAdd }) => {
           <button className="salary-modal-close" onClick={onClose}><i className="ri-close-line" /></button>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} style={{ maxHeight: '70vh', overflowY: 'auto', paddingRight: '10px' }}>
           {/* Employee Dropdown */}
           <div className="salary-field">
             <label className="salary-field-label">Employee <span className="salary-required">*</span></label>
@@ -191,8 +207,8 @@ const AddPaymentModal = ({ onClose, onAdd }) => {
                   {ALL_USERS.map(u => (
                     <div
                       key={u.id}
-                      className={`salary-dropdown-item${Number(selectedUserId) === u.id ? ' selected' : ''}`}
-                      onClick={() => { setSelectedUserId(String(u.id)); setDropdownOpen(false); }}
+                      className={`salary-dropdown-item${selectedUserId === u.id ? ' selected' : ''}`}
+                      onClick={() => { setSelectedUserId(u.id); setDropdownOpen(false); }}
                     >
                       {u.name} ({u.empCode})
                     </div>
@@ -202,70 +218,75 @@ const AddPaymentModal = ({ onClose, onAdd }) => {
             </div>
           </div>
 
-          {/* Salary breakdown preview after employee selected */}
-          {selectedConfig && (
-            <div className="salary-breakdown-preview">
-              <span>Base: {fmt(selectedConfig.base)}</span>
-              <span>Allowances: {fmt(selectedConfig.allowances)}</span>
-              <span>Deductions: {fmt(selectedConfig.deductions)}</span>
-              <span className="sbp-net">Net Salary: {fmt(selectedConfig.net)}</span>
-            </div>
-          )}
-
-          {/* Month + Year row */}
           <div className="salary-field-row">
             <div className="salary-field">
               <label className="salary-field-label">Month <span className="salary-required">*</span></label>
-              <select
-                className="salary-input"
-                value={month}
-                onChange={e => setMonth(e.target.value)}
-                required
-              >
+              <select className="salary-input" value={month} onChange={e => setMonth(e.target.value)} required>
                 <option value="">Select month</option>
                 {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
               </select>
             </div>
             <div className="salary-field">
               <label className="salary-field-label">Year <span className="salary-required">*</span></label>
-              <input
-                className="salary-input"
-                type="number"
-                value={year}
-                onChange={e => setYear(e.target.value)}
-                min="2000"
-                max="2099"
-                required
-              />
+              <input className="salary-input" type="number" value={year} onChange={e => setYear(e.target.value)} min="2000" required />
             </div>
           </div>
 
-          {/* Amount Paid */}
-          <div className="salary-field">
-            <label className="salary-field-label">Amount Paid <span className="salary-required">*</span></label>
-            <input
-              className="salary-input"
-              type="number"
-              value={amountPaid}
-              onChange={e => setAmountPaid(e.target.value)}
-              min="0"
-              required
-            />
-          </div>
-
-          {/* Payment Date */}
           <div className="salary-field">
             <label className="salary-field-label">Payment Date <span className="salary-required">*</span></label>
-            <input
-              className="salary-input"
-              type="date"
-              value={paymentDate}
-              onChange={e => setPaymentDate(e.target.value)}
-              required
-            />
+            <input className="salary-input" type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} required />
           </div>
 
-          <div className="salary-modal-actions">
+          <h4 style={{ margin: '1.5rem 0 1rem', color: 'var(--primary)' }}>Earnings</h4>
+          <div className="salary-field-row">
+            <div className="salary-field">
+              <label className="salary-field-label">Basic</label>
+              <input className="salary-input" type="number" value={basic} onChange={e => setBasic(e.target.value)} min="0" />
+            </div>
+            <div className="salary-field">
+              <label className="salary-field-label">HRA</label>
+              <input className="salary-input" type="number" value={hra} onChange={e => setHra(e.target.value)} min="0" />
+            </div>
+          </div>
+          <div className="salary-field-row">
+            <div className="salary-field">
+              <label className="salary-field-label">Conveyance</label>
+              <input className="salary-input" type="number" value={conveyance} onChange={e => setConveyance(e.target.value)} min="0" />
+            </div>
+            <div className="salary-field">
+              <label className="salary-field-label">Special Allowance</label>
+              <input className="salary-input" type="number" value={specialAllowance} onChange={e => setSpecialAllowance(e.target.value)} min="0" />
+            </div>
+          </div>
+
+          <h4 style={{ margin: '1.5rem 0 1rem', color: '#EE5D50' }}>Deductions</h4>
+          <div className="salary-field-row">
+            <div className="salary-field">
+              <label className="salary-field-label">PF Amount</label>
+              <input className="salary-input" type="number" value={pf} onChange={e => setPf(e.target.value)} min="0" />
+            </div>
+            <div className="salary-field">
+              <label className="salary-field-label">TDS</label>
+              <input className="salary-input" type="number" value={tds} onChange={e => setTds(e.target.value)} min="0" />
+            </div>
+          </div>
+          <div className="salary-field-row">
+            <div className="salary-field">
+              <label className="salary-field-label">Professional Tax</label>
+              <input className="salary-input" type="number" value={professionalTax} onChange={e => setProfessionalTax(e.target.value)} min="0" />
+            </div>
+            <div className="salary-field">
+              <label className="salary-field-label">LOP Amount</label>
+              <input className="salary-input" type="number" value={lopAmount} onChange={e => setLopAmount(e.target.value)} min="0" />
+            </div>
+          </div>
+
+          <div style={{ background: '#F8F9FC', padding: '1.25rem', borderRadius: '12px', marginTop: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-main)' }}>Net Salary</span>
+            <span style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--primary)' }}>{fmt(netSalary)}</span>
+          </div>
+
+          <div className="salary-modal-actions" style={{ marginTop: '1.5rem' }}>
             <button type="button" className="salary-cancel-btn" onClick={onClose}>Cancel</button>
             <button type="submit" className="salary-submit-btn">
               Add Payment &amp; Generate Payslip
@@ -304,20 +325,23 @@ const Salary = () => {
   const [showModal, setShowModal] = useState(false);
   const [toast, setToast] = useState(null);
 
-  const myConfig = user ? SALARY_CONFIG[user.id] : null;
   const myPayments = user ? getUserPayments(user.id) : [];
   const allPayments = getAllPayments();
+  const myConfig = user && myPayments.length > 0 ? myPayments[0] : null;
 
   const handleDownload = (row) => {
-    const config = SALARY_CONFIG[row.userId];
-    generatePayslip(row, config);
+    generatePayslip(row);
     setToast(`Generating payslip for ${row.userName} – ${row.month} ${row.year}`);
   };
 
-  const handleAddPayment = (data) => {
-    addPayment(data);
-    setShowModal(false);
-    setToast(`Salary payment added for ${data.userName}!`);
+  const handleAddPayment = async (data) => {
+    const res = await addPayment(data);
+    if (res.success) {
+      setShowModal(false);
+      setToast(`Salary payment added!`);
+    } else {
+      setToast(`Error: ${res.message}`);
+    }
   };
 
   return (
@@ -364,11 +388,16 @@ const Salary = () => {
             <div className="salary-section-card">
               <div className="salary-section-header">
                 <div>
-                  <h3 className="salary-section-title">Current Salary Details</h3>
-                  <p className="salary-section-sub">Your salary breakdown</p>
+                  <h3 className="salary-section-title">Latest Salary Details</h3>
+                  <p className="salary-section-sub">Your latest salary breakdown</p>
                 </div>
               </div>
-              <SalaryBreakdown config={myConfig} />
+              <SalaryBreakdown config={{
+                base: myConfig.basic || 0,
+                allowances: Number(myConfig.hra || 0) + Number(myConfig.conveyance || 0) + Number(myConfig.specialAllowance || 0),
+                deductions: Number(myConfig.pf || 0) + Number(myConfig.tds || 0) + Number(myConfig.professionalTax || 0) + Number(myConfig.lopAmount || 0),
+                net: myConfig.amountPaid || 0
+              }} />
             </div>
           )}
 
