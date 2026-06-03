@@ -323,7 +323,54 @@ const Dashboard = () => {
         {/* Left Column: Attendance, BOS & EOD reports */}
         <div className="flex flex-col gap-6">
           
-
+          {/* Attendance Section */}
+          <div className="card">
+            <h3 className="font-bold mb-4" style={{ fontSize: '1.125rem', color: 'var(--text-main)' }}>Attendance</h3>
+            
+            {isEmployee ? (
+              <>
+                {attendanceStatus === 'not_checked_in' && (
+                  <div>
+                    <div className="alert-banner warning">
+                      <i className="ri-error-warning-line alert-icon"></i>
+                      <div className="alert-content">
+                        <span className="alert-title">Action Required</span>
+                        <span className="alert-desc">Please check in to start your day</span>
+                      </div>
+                    </div>
+                    <button className="btn-teal" onClick={handleCheckInClick}>
+                      <i className="ri-time-line"></i> Check In (Submit BOS)
+                    </button>
+                  </div>
+                )}
+                {attendanceStatus === 'checked_in' && (
+                  <div>
+                    <div className="alert-banner info">
+                      <i className="ri-time-line alert-icon"></i>
+                      <div className="alert-content">
+                        <span className="alert-title">Currently Checked In</span>
+                        <span className="alert-desc">Check in time: {checkInTime || '-'}</span>
+                      </div>
+                    </div>
+                    <button className="btn-outline-blue" onClick={handleCheckOutClick}>
+                      <i className="ri-time-line"></i> Check Out (Submit EOD)
+                    </button>
+                  </div>
+                )}
+                {attendanceStatus === 'attendance_complete' && (
+                  <div className="alert-banner success" style={{ marginBottom: 0 }}>
+                    <i className="ri-checkbox-circle-line alert-icon"></i>
+                    <div className="alert-content">
+                      <span className="alert-title">Attendance Complete</span>
+                      <span className="alert-desc">Check in: {checkInTime} | Check out: {checkOutTime}</span>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="text-muted text-sm">Today's attendance overview is shown in the stats card above.</p>
+            )}
+          </div>
 
         </div> {/* End Left Column */}
 
