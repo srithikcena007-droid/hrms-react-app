@@ -123,6 +123,10 @@ const Leave = () => {
       setFormMsg({ type: 'error', text: 'Please select both From and To dates.' });
       return;
     }
+    if (!form.reason || !form.reason.trim()) {
+      setFormMsg({ type: 'error', text: 'Leave reason is mandatory.' });
+      return;
+    }
     if (new Date(form.to) < new Date(form.from)) {
       setFormMsg({ type: 'error', text: '"To" date cannot be before "From" date.' });
       return;
@@ -320,6 +324,7 @@ const Leave = () => {
                         <th>To</th>
                         <th>Days</th>
                         <th>Status</th>
+                        <th></th>
                         {canApprove && <th>Actions</th>}
                       </tr>
                     </thead>
@@ -349,6 +354,14 @@ const Leave = () => {
                           <td>{row.to_date || row.to}</td>
                           <td><strong>{row.days}</strong></td>
                           <td>{statusBadge(row.status)}</td>
+                          <td>
+                            <button
+                              style={{ background: 'none', border: '1px solid #CBD5E1', borderRadius: 6, padding: '0.25rem 0.6rem', cursor: 'pointer', color: '#4318FF', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
+                              onClick={() => setSelectedLeaveReason({ reason: row.reason || 'No reason provided.', type: row.type, comment: row.rejection_comment, status: row.status })}
+                            >
+                              <i className="ri-eye-line" /> View
+                            </button>
+                          </td>
                           {canApprove && (
                             <td>
                               <div className="leave-action-btns">
@@ -369,14 +382,6 @@ const Leave = () => {
                                       <i className="ri-close-line" /> Reject
                                     </button>
                                   </>
-                                )}
-                                {row.reason && (
-                                  <button
-                                    style={{ background: 'none', border: '1px solid #A3AED0', borderRadius: 6, padding: '0.25rem 0.6rem', cursor: 'pointer', color: '#707EAE', fontSize: '0.8rem' }}
-                                    onClick={() => setSelectedLeaveReason({ reason: row.reason, type: row.type, comment: row.rejection_comment })}
-                                  >
-                                    <i className="ri-eye-line" /> View
-                                  </button>
                                 )}
                               </div>
                             </td>
@@ -436,6 +441,7 @@ const Leave = () => {
                         <th>To</th>
                         <th>Days</th>
                         <th>Status</th>
+                        <th></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -464,6 +470,14 @@ const Leave = () => {
                           <td>{row.to_date || row.to}</td>
                           <td><strong>{row.days}</strong></td>
                           <td>{statusBadge(row.status)}</td>
+                          <td>
+                            <button
+                              style={{ background: 'none', border: '1px solid #CBD5E1', borderRadius: 6, padding: '0.25rem 0.6rem', cursor: 'pointer', color: '#4318FF', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
+                              onClick={() => setSelectedLeaveReason({ reason: row.reason || 'No reason provided.', type: row.type, comment: row.rejection_comment, status: row.status })}
+                            >
+                              <i className="ri-eye-line" /> View
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>

@@ -61,6 +61,7 @@ const TopBar = ({ title }) => {
         updateUser({ avatar_url: base64Str });
       } else {
         console.error('Avatar save failed:', error.message);
+        alert('Failed to save profile picture! Please ensure the avatar_url column is added in Supabase.');
       }
       setCropModal(null);
       setSaving(false);
