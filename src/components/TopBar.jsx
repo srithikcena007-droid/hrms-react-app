@@ -11,29 +11,47 @@ const TopBar = ({ title }) => {
   
   const [localAvatar, setLocalAvatar] = useState(null);
 
+  const dropdownRef = useRef(null);
+
   useEffect(() => {
     if (user?.avatar_url) setLocalAvatar(user.avatar_url);
   }, [user]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleAvatarChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const base64Str = event.target.result;
+    // Resize image to max 200x200 before saving
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = async () => {
+      const MAX = 200;
+      const canvas = document.createElement('canvas');
+      const scale = Math.min(MAX / img.width, MAX / img.height, 1);
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      const base64Str = canvas.toDataURL('image/jpeg', 0.7);
+      URL.revokeObjectURL(objectUrl);
       setLocalAvatar(base64Str);
-      
+
       const { error } = await supabase.from('employees').update({ avatar_url: base64Str }).eq('id', user.id);
       if (error) {
-        if (error.message.includes('avatar_url')) {
-          console.warn("Please run: ALTER TABLE employees ADD COLUMN avatar_url TEXT; in Supabase SQL editor");
-        } else {
-          console.error('Failed to update avatar:', error);
-        }
+        console.error('Failed to update avatar. Make sure avatar_url column exists:', error.message);
       }
     };
-    reader.readAsDataURL(file);
+    img.src = objectUrl;
     setDropdownOpen(false);
   };
 
@@ -49,7 +67,7 @@ const TopBar = ({ title }) => {
           <span style={{ position: 'absolute', top: '8px', right: '8px', width: '8px', height: '8px', background: 'var(--danger)', borderRadius: '50%' }}></span>
         </div>
         
-        <div className="user-profile" style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setDropdownOpen(!dropdownOpen)}>
+        <div className="user-profile" style={{ position: 'relative', cursor: 'pointer' }} ref={dropdownRef} onClick={() => setDropdownOpen(!dropdownOpen)}>
           <div className="avatar" style={{ overflow: 'hidden' }}>
             {localAvatar ? (
               <img src={localAvatar} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -102,7 +120,7 @@ const TopBar = ({ title }) => {
                 style={{ padding: '0.75rem 1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--danger)', transition: 'background 0.2s' }}
                 onMouseOver={(e) => e.currentTarget.style.background = 'rgba(238,93,80,0.05)'}
                 onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
-                onClick={() => { setDropdownOpen(false); logout(); }}
+                onClick={() => { setDropdownOpen(false); logout(); navigate('/login'); }}
               >
                 <i className="ri-logout-box-r-line"></i> Logout
               </div>
