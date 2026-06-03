@@ -117,7 +117,10 @@ const Login = () => {
                 />
                 Remember me
               </label>
-              <a href="/reset-password" className="login-forgot">
+              <a href="#" className="login-forgot" onClick={(e) => {
+                e.preventDefault();
+                alert('please reach out to -Hr@spatiotech.ai. For password change.');
+              }}>
                 Forgot Password?
               </a>
             </div>
