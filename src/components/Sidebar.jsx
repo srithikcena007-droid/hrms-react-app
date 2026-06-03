@@ -1,6 +1,7 @@
 import React, { useContext } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import logoWithText from '../assets/logo-with-text.png';
 
 const Sidebar = () => {
   const { user, logout } = useContext(AuthContext);
@@ -21,15 +22,8 @@ const Sidebar = () => {
 
   return (
     <div className="sidebar">
-      <div className="sidebar-logo">
-        <svg width="30" height="30" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M17 2.5L29 9.25V22.75L17 29.5L5 22.75V9.25L17 2.5Z" stroke="#2B3674" strokeWidth="2.2" strokeLinejoin="round" />
-          <path d="M17 2.5V16L29 9.25" stroke="#2B3674" strokeWidth="2.2" strokeLinejoin="round" />
-          <path d="M5 9.25L17 16V29.5" stroke="#2B3674" strokeWidth="2.2" strokeLinejoin="round" />
-          <path d="M5 22.75L17 16L29 22.75" stroke="#2B3674" strokeWidth="2.2" strokeLinejoin="round" />
-          <circle cx="17" cy="16" r="3" fill="#00A884" />
-        </svg>
-        <span style={{ fontSize: '1.45rem', fontWeight: 700, color: '#2B3674', letterSpacing: '-0.5px', marginLeft: '0.25rem' }}>Spatio</span>
+      <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '1rem 0' }}>
+        <img src={logoWithText} alt="Spatio Logo" style={{ height: '42px', objectFit: 'contain' }} />
       </div>
       <div className="sidebar-menu">
         {filteredMenu.map(item => (

@@ -1,6 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import logoWithText from '../assets/logo-with-text.png';
 
 const Login = () => {
   const { login, user } = useContext(AuthContext);
@@ -45,15 +46,8 @@ const Login = () => {
       <div className="login-right">
         <div className="login-form-container">
           {/* Logo */}
-          <div className="login-logo-container">
-            <svg width="34" height="34" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M17 2.5L29 9.25V22.75L17 29.5L5 22.75V9.25L17 2.5Z" stroke="#2B3674" strokeWidth="2.2" strokeLinejoin="round" />
-              <path d="M17 2.5V16L29 9.25" stroke="#2B3674" strokeWidth="2.2" strokeLinejoin="round" />
-              <path d="M5 9.25L17 16V29.5" stroke="#2B3674" strokeWidth="2.2" strokeLinejoin="round" />
-              <path d="M5 22.75L17 16L29 22.75" stroke="#2B3674" strokeWidth="2.2" strokeLinejoin="round" />
-              <circle cx="17" cy="16" r="3" fill="#00A884" />
-            </svg>
-            <span className="login-logo-text">Spatio</span>
+          <div className="login-logo-container" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <img src={logoWithText} alt="Spatio Logo" style={{ height: '48px', objectFit: 'contain' }} />
           </div>
 
           {/* Heading */}
