@@ -600,7 +600,7 @@ const Dashboard = () => {
       {/* Holiday Modal */}
       {showHolidayModal && (
         <div className="salary-modal-overlay" onClick={(e) => e.target === e.currentTarget && setShowHolidayModal(false)}>
-          <div className="salary-modal" style={{ maxWidth: 650, padding: '2rem' }}>
+          <div className="salary-modal" style={{ maxWidth: 650, boxSizing: 'border-box' }}>
             <div className="salary-modal-header" style={{ marginBottom: '1.5rem' }}>
               <div>
                 <h3 className="salary-modal-title">Upcoming Holidays</h3>
@@ -624,16 +624,16 @@ const Dashboard = () => {
                         onChange={e => setNewHolidayName(e.target.value)}
                         placeholder="e.g. Christmas Day — National Holiday"
                         required
-                        rows={3}
-                        style={{ margin: 0, resize: 'none' }}
+                        rows={2}
+                        style={{ margin: 0, resize: 'none', width: '100%', boxSizing: 'border-box' }}
                       />
                     </div>
-                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
-                      <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                      <div style={{ flex: '1 1 200px' }}>
                         <label style={{ display: 'block', fontSize: '0.8rem', color: '#646465', marginBottom: '0.25rem' }}>Date</label>
-                        <input type="date" className="salary-input" value={newHolidayDate} onChange={e => setNewHolidayDate(e.target.value)} required style={{ margin: 0 }} />
+                        <input type="date" className="salary-input" value={newHolidayDate} onChange={e => setNewHolidayDate(e.target.value)} required style={{ margin: 0, width: '100%', boxSizing: 'border-box' }} />
                       </div>
-                      <button type="submit" className="btn-teal" style={{ height: '42px', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                      <button type="submit" className="btn-teal" style={{ height: '42px', display: 'flex', alignItems: 'center', flexShrink: 0, padding: '0 1rem' }}>
                         <i className="ri-add-line" style={{ marginRight: '0.25rem' }}></i> Add
                       </button>
                     </div>
@@ -650,7 +650,7 @@ const Dashboard = () => {
                         {d.toLocaleString('default', { month: 'short', year: 'numeric' })}
                       </div>
                       <div style={{ padding: '1rem', textAlign: 'center' }}>
-                        <div style={{ fontSize: '2.5rem', fontWeight: 700, color: '#000000', lineHeight: 1 }}>{d.getDate()}</div>
+                        <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#000000', lineHeight: 1 }}>{d.getDate()}</div>
                         <div style={{ fontSize: '0.85rem', color: '#646465', marginTop: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{d.toLocaleString('default', { weekday: 'short' })}</div>
                         <div style={{ marginTop: '0.75rem', fontWeight: 600, color: '#006742', fontSize: '0.95rem', minHeight: '2.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{h.name}</div>
                       </div>
