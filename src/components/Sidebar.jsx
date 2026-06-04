@@ -8,12 +8,12 @@ const Sidebar = () => {
   const navigate = useNavigate();
   
   const menuItems = [
-    { path: '/', name: 'Dashboard', icon: 'ri-dashboard-line', roles: ['superadmin', 'admin', 'employee'] },
-    { path: '/attendance', name: 'Attendance', icon: 'ri-calendar-check-line', roles: ['superadmin', 'admin', 'employee'] },
-    { path: '/leave', name: 'Leave', icon: 'ri-flight-takeoff-line', roles: ['superadmin', 'admin', 'employee'] },
+    { path: '/', name: 'Dashboard', icon: 'ri-dashboard-line', roles: ['superadmin', 'head', 'admin', 'manager', 'employee'] },
+    { path: '/attendance', name: 'Attendance', icon: 'ri-calendar-check-line', roles: ['superadmin', 'head', 'admin', 'manager', 'employee'] },
+    { path: '/leave', name: 'Leave', icon: 'ri-flight-takeoff-line', roles: ['superadmin', 'head', 'admin', 'manager', 'employee'] },
     // { path: '/inbox', name: 'Inbox', icon: 'ri-mail-line', roles: ['superadmin', 'admin', 'employee'] },
-    { path: '/employees', name: 'Employees', icon: 'ri-group-line', roles: ['superadmin', 'admin'] },
-    { path: '/salary', name: 'Salary', icon: 'ri-wallet-3-line', roles: ['superadmin', 'admin', 'employee'] },
+    { path: '/employees', name: 'Employees', icon: 'ri-group-line', roles: ['superadmin', 'head', 'admin', 'manager'] },
+    { path: '/salary', name: 'Salary', icon: 'ri-wallet-3-line', roles: ['superadmin', 'head', 'admin', 'manager', 'employee'] },
     // { path: '/performance', name: 'Performance', icon: 'ri-line-chart-line', roles: ['superadmin', 'admin', 'employee'] },
     // { path: '/reports', name: 'Reports', icon: 'ri-file-chart-line', roles: ['superadmin', 'admin'] },
   ];

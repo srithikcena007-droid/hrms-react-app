@@ -4,6 +4,7 @@ import { AuthContext } from '../context/AuthContext';
 import { LeaveContext } from '../context/LeaveContext';
 import Layout from '../components/Layout';
 import { supabase } from '../utils/supabaseClient';
+import { getManagedDepartments } from '../utils/rbac';
 
 const Dashboard = () => {
   const { user } = useContext(AuthContext);
@@ -64,10 +65,15 @@ const Dashboard = () => {
       }
     }
 
-    if (user.role === 'admin' || user.role === 'superadmin') {
+    if (user.role === 'admin' || user.role === 'manager' || user.role === 'head' || user.role === 'superadmin') {
       let countQuery = supabase.from('employees').select('id', { count: 'exact', head: true });
-      if (user.role === 'admin' && user.managed_department) {
-        countQuery = countQuery.eq('department', user.managed_department);
+      if (user.role === 'admin' || user.role === 'manager') {
+        const allowedDepts = getManagedDepartments(user);
+        if (allowedDepts.length > 0) {
+          countQuery = countQuery.or(`department.in.(${allowedDepts.join(',')}),reports_to.eq.${user.id}`);
+        } else {
+          countQuery = countQuery.eq('reports_to', user.id);
+        }
       }
       const { count: totalCount } = await countQuery;
       setTotalEmployees(totalCount || 0);
@@ -75,14 +81,26 @@ const Dashboard = () => {
       // Fetch today's attendance counts
       const today = new Date().toISOString().split('T')[0];
       let attQuery = supabase.from('attendance').select('employee_id').eq('date', today);
-      if (user.role === 'admin' && user.managed_department) {
+      
+      if (user.role === 'admin' || user.role === 'manager') {
         // Get employee ids in department first
-        const { data: deptEmps } = await supabase.from('employees').select('id').eq('department', user.managed_department);
+        let deptEmpsQuery = supabase.from('employees').select('id');
+        const allowedDepts = getManagedDepartments(user);
+        if (allowedDepts.length > 0) {
+          deptEmpsQuery = deptEmpsQuery.or(`department.in.(${allowedDepts.join(',')}),reports_to.eq.${user.id}`);
+        } else {
+          deptEmpsQuery = deptEmpsQuery.eq('reports_to', user.id);
+        }
+        
+        const { data: deptEmps } = await deptEmpsQuery;
         const deptIds = (deptEmps || []).map(e => e.id);
         if (deptIds.length > 0) {
           attQuery = attQuery.in('employee_id', deptIds);
+        } else {
+          attQuery = attQuery.eq('id', '00000000-0000-0000-0000-000000000000'); // match none
         }
       }
+      
       const { data: attData } = await attQuery;
       const present = (attData || []).length;
       const absent = (totalCount || 0) - present;

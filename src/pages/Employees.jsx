@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { AuthContext } from '../context/AuthContext';
 import { supabase } from '../utils/supabaseClient';
+import { getManagedDepartments } from '../utils/rbac';
 
 /* ─── Status badge helper ─────────────────────────────── */
 const statusColor = (s) => {
@@ -72,6 +73,7 @@ const EmployeeDetailModal = ({ emp, onClose, onEdit, canEdit }) => {
             { icon: 'ri-calendar-line',     label: 'Date of Joining',value: emp.date_of_joining
                 ? new Date(emp.date_of_joining + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
                 : '-' },
+            ...(emp.reports_to ? [{ icon: 'ri-user-star-line', label: 'Reports To (ID)', value: emp.reports_to }] : [])
           ].map((row, i, arr) => (
             <div
               key={row.label}
@@ -120,7 +122,20 @@ const EmployeeModal = ({ onClose, onSave, initialData, user }) => {
   const [role, setRole] = useState(initialData?.role || 'employee');
   const [status, setStatus] = useState(initialData?.status || 'Active');
   const [managedDepartment, setManagedDepartment] = useState(initialData?.managed_department || '');
+  const [reportsTo, setReportsTo] = useState(initialData?.reports_to || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [potentialManagers, setPotentialManagers] = useState([]);
+
+  useEffect(() => {
+    const fetchManagers = async () => {
+      const { data } = await supabase.from('employees')
+        .select('id, name, role')
+        .in('role', ['admin', 'manager', 'head'])
+        .order('name');
+      if (data) setPotentialManagers(data);
+    };
+    fetchManagers();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -136,7 +151,8 @@ const EmployeeModal = ({ onClose, onSave, initialData, user }) => {
       date_of_joining: dateOfJoining,
       role,
       status,
-      managed_department: role === 'admin' ? managedDepartment : null
+      reports_to: reportsTo || null,
+      managed_department: (role === 'admin' || role === 'manager') ? managedDepartment : null
     });
     setIsSubmitting(false);
   };
@@ -187,6 +203,8 @@ const EmployeeModal = ({ onClose, onSave, initialData, user }) => {
             <select className="salary-input" value={role} onChange={e => setRole(e.target.value)} required>
               <option value="employee">Employee</option>
               <option value="admin">Admin</option>
+              <option value="manager">Manager</option>
+              <option value="head">Head</option>
               <option value="superadmin">Super Admin</option>
             </select>
           </div>
@@ -200,6 +218,45 @@ const EmployeeModal = ({ onClose, onSave, initialData, user }) => {
                 <option value="Design">Design</option>
                 <option value="Operations">Operations</option>
                 <option value="Sales">Sales</option>
+              </select>
+            </div>
+          )}
+
+          {role === 'manager' && (
+            <div className="salary-field">
+              <label className="salary-field-label">Managed Departments (For Manager) <span className="salary-required">*</span></label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+                {['Development', 'Design', 'Operations', 'Sales'].map(d => {
+                  const depts = managedDepartment ? managedDepartment.split(',').map(x => x.trim()) : [];
+                  const isChecked = depts.includes(d);
+                  return (
+                    <label key={d} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={isChecked}
+                        onChange={(e) => {
+                          let newDepts = [...depts];
+                          if (e.target.checked) newDepts.push(d);
+                          else newDepts = newDepts.filter(x => x !== d);
+                          setManagedDepartment(newDepts.join(', '));
+                        }} 
+                      />
+                      {d}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {user?.role === 'superadmin' && (
+            <div className="salary-field">
+              <label className="salary-field-label">Reports To (Optional)</label>
+              <select className="salary-input" value={reportsTo} onChange={e => setReportsTo(e.target.value)}>
+                <option value="">-- No Direct Manager --</option>
+                {potentialManagers.filter(pm => pm.id !== initialData?.id).map(pm => (
+                  <option key={pm.id} value={pm.id}>{pm.name} ({pm.role})</option>
+                ))}
               </select>
             </div>
           )}
@@ -240,13 +297,16 @@ const Employees = () => {
   const fetchEmployees = async () => {
     setLoading(true);
     let query = supabase.from('employees').select('*').order('created_at', { ascending: false });
-    if (user.role === 'admin') {
-      if (user.managed_department) {
-        query = query.eq('department', user.managed_department);
+    
+    if (user.role === 'admin' || user.role === 'manager') {
+      const allowedDepts = getManagedDepartments(user);
+      if (allowedDepts.length > 0) {
+        query = query.or(`department.in.(${allowedDepts.join(',')}),reports_to.eq.${user.id}`);
       } else {
-        query = query.eq('id', '00000000-0000-0000-0000-000000000000');
+        query = query.eq('reports_to', user.id);
       }
     }
+    
     const { data, error } = await query;
     if (error) console.error('Error fetching employees:', error);
     else setEmployees(data || []);
@@ -365,7 +425,7 @@ const Employees = () => {
                     </td>
                     <td>{emp.department}</td>
                     <td style={{ textTransform: 'capitalize' }}>
-                      {emp.role}{emp.role === 'admin' && emp.managed_department ? ` (${emp.managed_department})` : ''}
+                      {emp.role}{(emp.role === 'admin' || emp.role === 'manager') && emp.managed_department ? ` (${emp.managed_department})` : ''}
                     </td>
                     <td>
                       <span style={{ ...sc, padding: '3px 12px', borderRadius: 20, fontSize: '0.78rem', fontWeight: 700 }}>

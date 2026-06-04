@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { AuthContext } from '../context/AuthContext';
 import { supabase } from '../utils/supabaseClient';
+import { getManagedDepartments } from '../utils/rbac';
 
 const DEPARTMENTS = ['Development', 'Design', 'Operations', 'Sales'];
 
@@ -34,8 +35,13 @@ const Attendance = () => {
     if (!user) return;
     const fetchEmployees = async () => {
       let query = supabase.from('employees').select('id, name, department');
-      if (user.role === 'admin') {
-        query = query.eq('department', user.managed_department || '');
+      if (user.role === 'admin' || user.role === 'manager') {
+        const allowedDepts = getManagedDepartments(user);
+        if (allowedDepts.length > 0) {
+          query = query.or(`department.in.(${allowedDepts.join(',')}),reports_to.eq.${user.id}`);
+        } else {
+          query = query.eq('reports_to', user.id);
+        }
       } else if (user.role === 'employee') {
         return;
       }
@@ -301,8 +307,8 @@ const Attendance = () => {
           </div>
 
           <div className="flex items-center gap-3" style={{ flexWrap: 'wrap' }}>
-            {/* Department filter for Super Admin only */}
-            {user?.role === 'superadmin' && (
+            {/* Department filter for Super Admin / Head */}
+            {(user?.role === 'superadmin' || user?.role === 'head') && (
               <div className="flex items-center gap-2">
                 <span className="text-sm font-semibold text-muted">Department:</span>
                 <select
@@ -319,7 +325,7 @@ const Attendance = () => {
               </div>
             )}
 
-            {(user?.role === 'admin' || user?.role === 'superadmin') && (
+            {(user?.role === 'admin' || user?.role === 'manager' || user?.role === 'superadmin' || user?.role === 'head') && (
               <div className="flex items-center gap-2">
                 <span className="text-sm font-semibold text-muted">Employee:</span>
                 <select 
@@ -329,7 +335,7 @@ const Attendance = () => {
                   onChange={(e) => setSelectedEmployeeId(e.target.value)}
                 >
                   <option value={user.id}>Me ({user.name})</option>
-                  {(user?.role === 'superadmin' ? filteredEmployees : employees)
+                  {((user?.role === 'superadmin' || user?.role === 'head') ? filteredEmployees : employees)
                     .filter(e => e.id !== user.id)
                     .map(emp => (
                       <option key={emp.id} value={emp.id}>{emp.name}</option>

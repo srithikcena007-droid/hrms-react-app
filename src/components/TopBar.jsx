@@ -2,6 +2,7 @@ import React, { useContext, useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { AuthContext } from '../context/AuthContext';
 import { supabase } from '../utils/supabaseClient';
+import { isDepartmentManagedBy } from '../utils/rbac';
 import { useNavigate } from 'react-router-dom';
 
 const TopBar = ({ title }) => {
@@ -19,21 +20,33 @@ const TopBar = ({ title }) => {
   useEffect(() => {
     if (user?.avatar_url) setLocalAvatar(user.avatar_url);
     
-    // Fetch reports to (department admin)
-    if (user?.role === 'superadmin') {
+    // Fetch reports to
+    if (user?.reports_to) {
+      const fetchReportsTo = async () => {
+        const { data } = await supabase.from('employees').select('name').eq('id', user.reports_to).maybeSingle();
+        setReportsTo(data ? data.name : 'Unknown Manager');
+      };
+      fetchReportsTo();
+    } else if (user?.role === 'superadmin') {
       setReportsTo('N/A (Superadmin)');
-    } else if (user?.role === 'admin') {
+    } else if (user?.role === 'head') {
       setReportsTo('Super Admin');
+    } else if (user?.role === 'admin' || user?.role === 'manager') {
+      const fetchHead = async () => {
+        const { data } = await supabase.from('employees').select('name').eq('role', 'head').limit(1).maybeSingle();
+        setReportsTo(data ? data.name : 'Head (Unassigned)');
+      };
+      fetchHead();
     } else if (user?.department) {
       const fetchAdmin = async () => {
         const { data } = await supabase
           .from('employees')
-          .select('name')
-          .eq('role', 'admin')
-          .eq('managed_department', user.department)
-          .single();
-        if (data) {
-          setReportsTo(data.name);
+          .select('name, role, managed_department')
+          .in('role', ['admin', 'manager']);
+          
+        if (data && data.length > 0) {
+          const manager = data.find(m => isDepartmentManagedBy(user.department, m));
+          setReportsTo(manager ? manager.name : 'No Admin Assigned');
         } else {
           setReportsTo('No Admin Assigned');
         }

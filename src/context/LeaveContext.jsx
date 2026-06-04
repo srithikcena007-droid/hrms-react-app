@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { AuthContext } from './AuthContext';
 import { supabase } from '../utils/supabaseClient';
+import { isEmployeeManagedBy } from '../utils/rbac';
 
 export const LeaveContext = createContext();
 
@@ -180,12 +181,11 @@ export const LeaveProvider = ({ children }) => {
       // Super admin sees all pending requests
       return requests.filter(r => r.status === 'Pending' && r.employee_id !== user.id);
     }
-    if (user.role === 'admin') {
-      // Admin sees only employees in their managed_department
-      return requests.filter(r => 
-        r.employee_id !== user.id &&
-        r.employees?.department === user.managed_department
-      );
+    if (user.role === 'admin' || user.role === 'manager') {
+      return requests.filter(r => {
+        if (r.employee_id === user.id) return false;
+        return isEmployeeManagedBy(r.employees, user);
+      });
     }
     return [];
   };
@@ -193,11 +193,11 @@ export const LeaveProvider = ({ children }) => {
   // Get all leave history for admins/superadmins
   const getLeaveHistory = () => {
     if (!user) return [];
-    if (user.role === 'superadmin') {
+    if (user.role === 'superadmin' || user.role === 'head') {
       return requests;
     }
-    if (user.role === 'admin') {
-      return requests.filter(r => r.employees?.department === user.managed_department);
+    if (user.role === 'admin' || user.role === 'manager') {
+      return requests.filter(r => isEmployeeManagedBy(r.employees, user));
     }
     return [];
   };
