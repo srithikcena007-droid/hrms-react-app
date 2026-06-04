@@ -110,9 +110,11 @@ const AllPaymentsTable = ({ payments, onDownload, onDelete }) => (
                   <button className="salary-payslip-btn" onClick={() => onDownload(row)}>
                     <i className="ri-download-2-line" /> Payslip
                   </button>
-                  <button className="salary-payslip-btn" style={{ background: '#FFF0F0', color: '#C62828', border: '1px solid #FFCDD2' }} onClick={() => { if(window.confirm('Are you sure you want to delete this payment?')) onDelete(row.id); }}>
-                    <i className="ri-delete-bin-line" />
-                  </button>
+                  {onDelete && (
+                    <button className="salary-payslip-btn" style={{ background: '#FFF0F0', color: '#C62828', border: '1px solid #FFCDD2' }} onClick={() => { if(window.confirm('Are you sure you want to delete this payment?')) onDelete(row.id); }}>
+                      <i className="ri-delete-bin-line" />
+                    </button>
+                  )}
                 </div>
               </td>
             </tr>
@@ -338,6 +340,8 @@ const Salary = () => {
   const { getUserPayments, getAllPayments, addPayment, deletePayment } = useContext(SalaryContext);
 
   const isSuperAdmin = user?.role === 'superadmin';
+  const canViewAllPayments = user?.role === 'superadmin' || user?.role === 'head';
+
   // superadmin gets two tabs; others only see own payslips
   const [activeTab, setActiveTab] = useState('myPayslips');
   const [showModal, setShowModal] = useState(false);
@@ -394,8 +398,8 @@ const Salary = () => {
         )}
       </div>
 
-      {/* ── Superadmin tab bar ── */}
-      {isSuperAdmin && (
+      {/* ── Tabs bar ── */}
+      {canViewAllPayments && (
         <div className="salary-tabs">
           <button
             className={`salary-tab-btn${activeTab === 'myPayslips' ? ' active' : ''}`}
@@ -481,8 +485,8 @@ const Salary = () => {
         </>
       )}
 
-      {/* ── All Payments view (superadmin only) ── */}
-      {activeTab === 'allPayments' && isSuperAdmin && (
+      {/* ── All Payments view (superadmin and head only) ── */}
+      {activeTab === 'allPayments' && canViewAllPayments && (
         <div className="salary-section-card">
           <div className="salary-section-header">
             <div>
@@ -490,7 +494,7 @@ const Salary = () => {
               <p className="salary-section-sub">View all salary payments made to employees</p>
             </div>
           </div>
-          <AllPaymentsTable payments={allPayments} onDownload={handleDownload} onDelete={handleDeletePayment} />
+          <AllPaymentsTable payments={allPayments} onDownload={handleDownload} onDelete={isSuperAdmin ? handleDeletePayment : null} />
         </div>
       )}
 

@@ -96,7 +96,7 @@ const Leave = () => {
 
   const isSuperAdmin = user?.role === 'superadmin';
   const isAdmin = user?.role === 'admin';
-  const canViewApprovals = isAdmin || isSuperAdmin;
+  const canViewApprovals = ['admin', 'superadmin', 'manager', 'head'].includes(user?.role);
   const canApprove = isSuperAdmin; // only superadmin can approve/reject
 
   const leaveHistory = getLeaveHistory();
@@ -289,7 +289,7 @@ const Leave = () => {
                 className={`salary-tab-btn${activeTab === 'approvals' ? ' active' : ''}`}
                 onClick={() => setActiveTab('approvals')}
               >
-                <i className="ri-checkbox-circle-line" /> {isSuperAdmin ? 'Pending Approvals' : 'Department Approvals'}
+                <i className="ri-checkbox-circle-line" /> {(isSuperAdmin || user?.role === 'head') ? 'Pending Approvals' : 'Department Approvals'}
                 {pendingApprovals.length > 0 && (
                   <span className="leave-tab-count pending" style={{ marginLeft: '0.25rem', background: '#FEE2E2', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.75rem', color: '#991B1B' }}>{pendingApprovals.length}</span>
                 )}

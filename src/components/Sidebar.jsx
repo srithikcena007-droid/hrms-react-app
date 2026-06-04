@@ -22,7 +22,7 @@ const Sidebar = () => {
 
   return (
     <div className="sidebar">
-      <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '1rem 0' }}>
+      <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '1rem 1.5rem' }}>
         <img src={logoDark} alt="Spatio Logo" style={{ height: '42px', objectFit: 'contain' }} />
       </div>
       <div className="sidebar-menu">
