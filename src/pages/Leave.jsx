@@ -305,7 +305,7 @@ const Leave = () => {
             )}
 
             {isSuperAdmin && (
-              <button className="salary-add-btn" onClick={() => setShowGrantModal(true)} style={{ marginLeft: 'auto', background: '#4318FF' }}>
+              <button className="salary-add-btn" onClick={() => setShowGrantModal(true)} style={{ marginLeft: 'auto', background: '#003B2C' }}>
                 <i className="ri-award-line" /> Grant Comp Off
               </button>
             )}

@@ -4,6 +4,111 @@ import Layout from '../components/Layout';
 import { AuthContext } from '../context/AuthContext';
 import { supabase } from '../utils/supabaseClient';
 
+/* ─── Status badge helper ─────────────────────────────── */
+const statusColor = (s) => {
+  if (s === 'Active') return { bg: '#D1FAE5', color: '#006742' };
+  if (s === 'On Notice') return { bg: '#FEF3C7', color: '#CA8A04' };
+  if (s === 'Released') return { bg: '#F2F2F2', color: '#494949' };
+  return { bg: '#E8E8E8', color: '#646465' };
+};
+
+/* ─── Avatar cell: shows photo or initials ─────────────── */
+const EmpAvatar = ({ emp, size = 36 }) => {
+  if (emp.avatar_url) {
+    return (
+      <img
+        src={emp.avatar_url}
+        alt={emp.name}
+        style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+      />
+    );
+  }
+  const initials = emp.name ? emp.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '?';
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: '50%',
+      background: 'linear-gradient(135deg, #003B2C 0%, #00A87E 100%)',
+      color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontWeight: 700, fontSize: size * 0.35, flexShrink: 0
+    }}>
+      {initials}
+    </div>
+  );
+};
+
+/* ─── Employee Detail Popup ───────────────────────────── */
+const EmployeeDetailModal = ({ emp, onClose, onEdit, canEdit }) => {
+  const sc = statusColor(emp.status);
+  return (
+    <div className="salary-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="salary-modal" style={{ maxWidth: 420, textAlign: 'center' }}>
+        {/* Header close button */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.5rem' }}>
+          <button className="salary-modal-close" onClick={onClose}><i className="ri-close-line" /></button>
+        </div>
+
+        {/* Big centered profile picture */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+          <EmpAvatar emp={emp} size={100} />
+        </div>
+
+        <h3 style={{ fontSize: '1.3rem', fontWeight: 700, color: '#000', marginBottom: '0.25rem' }}>{emp.name}</h3>
+        <p style={{ fontSize: '0.9rem', color: '#646465', marginBottom: '0.75rem' }}>{emp.designation}</p>
+        
+        <div style={{ marginBottom: '1.25rem' }}>
+          <span style={{ ...sc, padding: '3px 14px', borderRadius: 20, fontSize: '0.78rem', fontWeight: 700, display: 'inline-block' }}>
+            {emp.status || 'Active'}
+          </span>
+        </div>
+
+        {/* Details list */}
+        <div style={{ textAlign: 'left', background: '#F4F4F4', borderRadius: 12, padding: '0.5rem', marginBottom: '1.25rem' }}>
+          {[
+            { icon: 'ri-id-card-line',      label: 'EMP Code',       value: emp.emp_code },
+            { icon: 'ri-briefcase-line',    label: 'Department',     value: emp.department },
+            { icon: 'ri-user-settings-line',label: 'Designation',    value: emp.designation },
+            { icon: 'ri-shield-user-line',  label: 'Role',           value: emp.role + (emp.role === 'admin' && emp.managed_department ? ` (${emp.managed_department})` : '') },
+            { icon: 'ri-mail-line',         label: 'Email',          value: emp.email },
+            { icon: 'ri-calendar-line',     label: 'Date of Joining',value: emp.date_of_joining
+                ? new Date(emp.date_of_joining + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+                : '-' },
+          ].map((row, i, arr) => (
+            <div
+              key={row.label}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.875rem',
+                padding: '0.75rem',
+                borderBottom: i < arr.length - 1 ? '1px solid #E8E8E8' : 'none',
+              }}
+            >
+              <div style={{ width: 32, height: 32, background: '#E8F2EF', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <i className={row.icon} style={{ color: '#006742', fontSize: '1rem' }} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: '0.72rem', color: '#646465', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{row.label}</div>
+                <div style={{ fontSize: '0.9rem', color: '#000', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.value || '—'}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {canEdit && (
+          <button
+            className="btn-teal"
+            style={{ width: '100%' }}
+            onClick={() => { onClose(); onEdit(emp); }}
+          >
+            <i className="ri-pencil-line" /> Edit Employee
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+/* ─── Add / Edit Employee Modal ───────────────────────── */
 const EmployeeModal = ({ onClose, onSave, initialData, user }) => {
   const isEditing = !!initialData?.id;
   const [empCode, setEmpCode] = useState(initialData?.emp_code || '');
@@ -15,7 +120,6 @@ const EmployeeModal = ({ onClose, onSave, initialData, user }) => {
   const [role, setRole] = useState(initialData?.role || 'employee');
   const [status, setStatus] = useState(initialData?.status || 'Active');
   const [managedDepartment, setManagedDepartment] = useState(initialData?.managed_department || '');
-  
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -104,7 +208,8 @@ const EmployeeModal = ({ onClose, onSave, initialData, user }) => {
             <label className="salary-field-label">Status <span className="salary-required">*</span></label>
             <select className="salary-input" value={status} onChange={e => setStatus(e.target.value)} required>
               <option value="Active">Active</option>
-              <option value="On Leave">On Leave</option>
+              <option value="On Notice">On Notice</option>
+              <option value="Released">Released</option>
             </select>
           </div>
           <div className="salary-modal-actions">
@@ -119,12 +224,15 @@ const EmployeeModal = ({ onClose, onSave, initialData, user }) => {
   );
 };
 
+/* ─── Main Employees Page ─────────────────────────────── */
 const Employees = () => {
   const { user } = useContext(AuthContext);
   const [employees, setEmployees] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState(null);
+  const [viewingEmployee, setViewingEmployee] = useState(null); // for detail popup
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
 
   if (!user) return <Navigate to="/login" replace />;
   if (user.role === 'employee') return <Navigate to="/" replace />;
@@ -132,62 +240,37 @@ const Employees = () => {
   const fetchEmployees = async () => {
     setLoading(true);
     let query = supabase.from('employees').select('*').order('created_at', { ascending: false });
-    
-    // RBAC: Admins can only view employees in their managed department
     if (user.role === 'admin') {
       if (user.managed_department) {
         query = query.eq('department', user.managed_department);
       } else {
-        // If an admin has no managed_department assigned, they see no one
-        query = query.eq('id', '00000000-0000-0000-0000-000000000000'); 
+        query = query.eq('id', '00000000-0000-0000-0000-000000000000');
       }
     }
-    
     const { data, error } = await query;
-    
-    if (error) {
-      console.error('Error fetching employees:', error);
-    } else {
-      setEmployees(data || []);
-    }
+    if (error) console.error('Error fetching employees:', error);
+    else setEmployees(data || []);
     setLoading(false);
   };
 
-  useEffect(() => {
-    fetchEmployees();
-  }, [user]);
+  useEffect(() => { fetchEmployees(); }, [user]);
 
   const handleSaveEmployee = async (employeeData) => {
     const { id, email, ...rest } = employeeData;
     const cleanEmail = email.toLowerCase().trim();
     const dataToSave = { ...rest, email: cleanEmail };
-    
     if (id) {
-      // Edit mode
       const { error } = await supabase.from('employees').update(dataToSave).eq('id', id);
-      if (error) {
-        alert('Error updating employee: ' + error.message);
-      } else {
-        fetchEmployees();
-        setShowModal(false);
-        setEditingEmployee(null);
-      }
+      if (error) alert('Error updating employee: ' + error.message);
+      else { fetchEmployees(); setShowModal(false); setEditingEmployee(null); }
     } else {
-      // Add mode
-      // Default password to '123' for test accounts or handle properly later
-      const insertData = { ...dataToSave, password: '123' }; 
+      const insertData = { ...dataToSave, password: '123' };
       const { data: newEmployee, error } = await supabase.from('employees').insert([insertData]).select();
-      if (error) {
-        alert('Error adding employee: ' + error.message);
-      } else {
+      if (error) alert('Error adding employee: ' + error.message);
+      else {
         if (newEmployee && newEmployee.length > 0) {
           const empId = newEmployee[0].id;
-          await supabase.from('leave_balances').insert([{
-            employee_id: empId,
-            sick_leave: 12,
-            casual_leave: 12,
-            comp_off: 0
-          }]);
+          await supabase.from('leave_balances').insert([{ employee_id: empId, sick_leave: 12, casual_leave: 12, comp_off: 0 }]);
         }
         fetchEmployees();
         setShowModal(false);
@@ -196,55 +279,54 @@ const Employees = () => {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this employee? This action cannot be undone.")) {
+    if (window.confirm('Are you sure you want to delete this employee? This action cannot be undone.')) {
       const { error } = await supabase.from('employees').delete().eq('id', id);
-      if (error) {
-        alert("Error deleting employee: " + error.message);
-      } else {
-        fetchEmployees();
-      }
+      if (error) alert('Error deleting employee: ' + error.message);
+      else fetchEmployees();
     }
   };
 
-  const openEditModal = (emp) => {
-    setEditingEmployee(emp);
-    setShowModal(true);
-  };
+  const openEditModal = (emp) => { setEditingEmployee(emp); setShowModal(true); };
 
   const generateNextEmpCode = () => {
     if (!employees || employees.length === 0) return 'STS001';
     const codes = employees
       .map(emp => emp.emp_code)
       .filter(code => code && typeof code === 'string')
-      .map(code => {
-        const match = code.match(/[a-zA-Z]+(\d+)/);
-        return match ? parseInt(match[1], 10) : NaN;
-      })
+      .map(code => { const match = code.match(/[a-zA-Z]+(\d+)/); return match ? parseInt(match[1], 10) : NaN; })
       .filter(num => !isNaN(num));
-    
     if (codes.length === 0) return 'STS001';
-    const maxCode = Math.max(...codes);
-    return `STS${String(maxCode + 1).padStart(3, '0')}`;
+    return `STS${String(Math.max(...codes) + 1).padStart(3, '0')}`;
   };
 
-  const openAddModal = () => {
-    setEditingEmployee({ emp_code: generateNextEmpCode() });
-    setShowModal(true);
-  };
+  const openAddModal = () => { setEditingEmployee({ emp_code: generateNextEmpCode() }); setShowModal(true); };
+
+  const filteredEmployees = employees.filter(emp =>
+    !search || emp.name?.toLowerCase().includes(search.toLowerCase()) ||
+    emp.emp_code?.toLowerCase().includes(search.toLowerCase()) ||
+    emp.department?.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <Layout title="Employees">
       <div className="card mb-6">
         <div className="flex justify-between items-center">
-          <div className="input-group" style={{ margin: 0, flexDirection: 'row', alignItems: 'center', width: '300px' }}>
-            <i className="ri-search-line text-muted absolute ml-3"></i>
-            <input type="text" placeholder="Search employees..." style={{ paddingLeft: '2.5rem', width: '100%' }} />
+          <div className="input-group" style={{ margin: 0, flexDirection: 'row', alignItems: 'center', width: '300px', position: 'relative' }}>
+            <i className="ri-search-line text-muted" style={{ position: 'absolute', left: '0.75rem' }}></i>
+            <input
+              type="text"
+              placeholder="Search employees..."
+              style={{ paddingLeft: '2.5rem', width: '100%' }}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
           </div>
           {user.role === 'superadmin' && (
             <button className="btn" onClick={openAddModal}><i className="ri-user-add-line"></i> Add Employee</button>
           )}
         </div>
       </div>
+
       <div className="card">
         <table>
           <thead>
@@ -260,44 +342,72 @@ const Employees = () => {
           <tbody>
             {loading ? (
               <tr><td colSpan="6" style={{ textAlign: 'center' }}>Loading employees...</td></tr>
-            ) : employees.length === 0 ? (
+            ) : filteredEmployees.length === 0 ? (
               <tr><td colSpan="6" style={{ textAlign: 'center' }}>No employees found.</td></tr>
             ) : (
-              employees.map((emp) => (
-                <tr key={emp.id}>
-                  <td>{emp.emp_code}</td>
-                <td>
-                  <div className="flex items-center gap-3">
-                    <div className="avatar" style={{ width: 32, height: 32, fontSize: '0.875rem' }}>{emp.name.charAt(0)}</div>
-                    <span className="font-bold">{emp.name}</span>
-                  </div>
-                </td>
-                <td>{emp.department}</td>
-                <td>{emp.role} {emp.role === 'admin' && emp.managed_department ? `(${emp.managed_department})` : ''}</td>
-                <td>
-                  <span className={`badge ${emp.status === 'Active' ? 'success' : 'warning'}`}>{emp.status}</span>
-                </td>
-                {user.role === 'superadmin' && (
-                  <td>
-                    <div className="flex gap-2">
-                      <button className="icon-btn" style={{ width: 32, height: 32 }} onClick={() => openEditModal(emp)}><i className="ri-pencil-line"></i></button>
-                      <button className="icon-btn" style={{ width: 32, height: 32, color: 'var(--danger)' }} onClick={() => handleDelete(emp.id)}><i className="ri-delete-bin-line"></i></button>
-                    </div>
-                  </td>
-                )}
-              </tr>
-            )))}
+              filteredEmployees.map((emp) => {
+                const sc = statusColor(emp.status);
+                return (
+                  <tr
+                    key={emp.id}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => setViewingEmployee(emp)}
+                  >
+                    <td style={{ color: '#646465', fontSize: '0.85rem' }}>{emp.emp_code}</td>
+                    <td>
+                      <div className="flex items-center gap-3">
+                        <EmpAvatar emp={emp} size={36} />
+                        <div>
+                          <div className="font-bold" style={{ color: '#000' }}>{emp.name}</div>
+                          <div style={{ fontSize: '0.78rem', color: '#646465' }}>{emp.designation}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>{emp.department}</td>
+                    <td style={{ textTransform: 'capitalize' }}>
+                      {emp.role}{emp.role === 'admin' && emp.managed_department ? ` (${emp.managed_department})` : ''}
+                    </td>
+                    <td>
+                      <span style={{ ...sc, padding: '3px 12px', borderRadius: 20, fontSize: '0.78rem', fontWeight: 700 }}>
+                        {emp.status || 'Active'}
+                      </span>
+                    </td>
+                    {user.role === 'superadmin' && (
+                      <td onClick={e => e.stopPropagation()}>
+                        <div className="flex gap-2">
+                          <button className="icon-btn" style={{ width: 32, height: 32 }} onClick={() => openEditModal(emp)}>
+                            <i className="ri-pencil-line"></i>
+                          </button>
+                          <button className="icon-btn" style={{ width: 32, height: 32, color: 'var(--danger)' }} onClick={() => handleDelete(emp.id)}>
+                            <i className="ri-delete-bin-line"></i>
+                          </button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>
+
+      {/* Employee Detail Popup */}
+      {viewingEmployee && (
+        <EmployeeDetailModal
+          emp={viewingEmployee}
+          onClose={() => setViewingEmployee(null)}
+          onEdit={openEditModal}
+          canEdit={user.role === 'superadmin'}
+        />
+      )}
+
+      {/* Add / Edit Modal */}
       {showModal && (
         <EmployeeModal
           initialData={editingEmployee}
           user={user}
-          onClose={() => {
-            setShowModal(false);
-            setEditingEmployee(null);
-          }}
+          onClose={() => { setShowModal(false); setEditingEmployee(null); }}
           onSave={handleSaveEmployee}
         />
       )}

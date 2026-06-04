@@ -342,6 +342,10 @@ const Salary = () => {
   const [activeTab, setActiveTab] = useState('myPayslips');
   const [showModal, setShowModal] = useState(false);
   const [toast, setToast] = useState(null);
+  
+  // Month/Year filter for payslip history
+  const [filterMonth, setFilterMonth] = useState('');
+  const [filterYear, setFilterYear] = useState('');
 
   const myPayments = user ? getUserPayments(user.id) : [];
   const allPayments = getAllPayments();
@@ -434,8 +438,45 @@ const Salary = () => {
                 <h3 className="salary-section-title">Payment History</h3>
                 <p className="salary-section-sub">Your salary payment records and payslips</p>
               </div>
+              {/* Month / Year filter */}
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <select
+                  className="salary-input"
+                  style={{ margin: 0, minWidth: 130 }}
+                  value={filterMonth}
+                  onChange={e => setFilterMonth(e.target.value)}
+                >
+                  <option value="">All Months</option>
+                  {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+                <select
+                  className="salary-input"
+                  style={{ margin: 0, minWidth: 90 }}
+                  value={filterYear}
+                  onChange={e => setFilterYear(e.target.value)}
+                >
+                  <option value="">All Years</option>
+                  {Array.from(new Set(myPayments.map(p => String(p.year)))).sort((a,b) => b-a).map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+                {(filterMonth || filterYear) && (
+                  <button
+                    onClick={() => { setFilterMonth(''); setFilterYear(''); }}
+                    style={{ background: 'none', border: 'none', color: '#646465', cursor: 'pointer', fontSize: '0.85rem', padding: '0.3rem 0.5rem' }}
+                  >
+                    <i className="ri-close-line"></i> Clear
+                  </button>
+                )}
+              </div>
             </div>
-            <PaymentHistoryTable payments={myPayments} onDownload={handleDownload} />
+            <PaymentHistoryTable
+              payments={myPayments.filter(p =>
+                (!filterMonth || p.month === filterMonth) &&
+                (!filterYear || String(p.year) === filterYear)
+              )}
+              onDownload={handleDownload}
+            />
           </div>
         </>
       )}

@@ -33,6 +33,7 @@ const Dashboard = () => {
   const [newHolidayName, setNewHolidayName] = useState('');
   const [newHolidayDate, setNewHolidayDate] = useState('');
   const [attendanceCounts, setAttendanceCounts] = useState({ present: 0, absent: 0 });
+  const [elapsedTime, setElapsedTime] = useState('');
 
   const fetchHolidays = async () => {
     const { data } = await supabase.from('holidays').select('*').order('date', { ascending: true });
@@ -100,6 +101,28 @@ const Dashboard = () => {
       return () => clearTimeout(timer);
     }
   }, [toastMessage]);
+
+  // Running timer when checked in
+  useEffect(() => {
+    if (attendanceStatus !== 'checked_in' || !checkInTime) {
+      setElapsedTime('');
+      return;
+    }
+    const tick = () => {
+      const now = new Date();
+      const [h, m] = checkInTime.split(':').map(Number);
+      const start = new Date();
+      start.setHours(h, m, 0, 0);
+      const diff = Math.max(0, Math.floor((now - start) / 1000));
+      const hh = Math.floor(diff / 3600);
+      const mm = Math.floor((diff % 3600) / 60);
+      const ss = diff % 60;
+      setElapsedTime(`${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`);
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [attendanceStatus, checkInTime]);
 
   const handleCheckInClick = () => setShowBosModal(true);
   const handleCheckOutClick = () => setShowEodModal(true);
@@ -224,8 +247,8 @@ const Dashboard = () => {
               <i className="ri-calendar-line"></i>
             </div>
             <div className="card-info">
-              <span className="card-label">Attendance</span>
-              <span className="card-value">20</span>
+              <span className="card-label">My Attendance</span>
+              <span className="card-value" style={{ fontSize: '1rem', color: '#646465', fontWeight: 500 }}>View Calendar →</span>
             </div>
           </div>
 
@@ -251,7 +274,7 @@ const Dashboard = () => {
               <i className="ri-group-line"></i>
             </div>
             <div className="card-info">
-              <span className="card-label">Number of Employees</span>
+              <span className="card-label">{isNormalAdmin ? 'Department Employees' : 'Total Employees'}</span>
               <span className="card-value">{totalEmployees}</span>
             </div>
           </div>
@@ -264,9 +287,9 @@ const Dashboard = () => {
             <div className="card-info">
               <span className="card-label">Attendance</span>
               <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'baseline', marginTop: '0.2rem' }}>
-                <span className="card-value" style={{ color: '#00A884', fontSize: '1.5rem' }}>{attendanceCounts.present} <span style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 500 }}>Present</span></span>
+                <span className="card-value" style={{ color: '#00A87E', fontSize: '1.5rem' }}>{attendanceCounts.present} <span style={{ fontSize: '0.7rem', color: '#646465', fontWeight: 500 }}>Present</span></span>
                 <span style={{ color: '#E2E8F0' }}>|</span>
-                <span className="card-value" style={{ color: '#EE5D50', fontSize: '1.5rem' }}>{attendanceCounts.absent} <span style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 500 }}>Absent</span></span>
+                <span className="card-value" style={{ color: '#494949', fontSize: '1.5rem' }}>{attendanceCounts.absent} <span style={{ fontSize: '0.7rem', color: '#646465', fontWeight: 500 }}>Absent</span></span>
               </div>
             </div>
           </div>
@@ -349,6 +372,12 @@ const Dashboard = () => {
                         <span className="alert-title">Currently Checked In</span>
                         <span className="alert-desc">Check in time: {checkInTime || '-'}</span>
                       </div>
+                      {elapsedTime && (
+                        <div style={{ marginLeft: 'auto', textAlign: 'right', flexShrink: 0 }}>
+                          <div style={{ fontSize: '0.7rem', color: '#646465', fontWeight: 600 }}>TIME ELAPSED</div>
+                          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#006742', fontFamily: 'monospace', letterSpacing: '0.05em' }}>{elapsedTime}</div>
+                        </div>
+                      )}
                     </div>
                     <button className="btn-outline-blue" onClick={handleCheckOutClick}>
                       <i className="ri-time-line"></i> Check Out (Submit EOD)
@@ -368,10 +397,11 @@ const Dashboard = () => {
 
         </div> {/* End Left Column */}
 
-        {/* Right Column: Leave Lists */}
+        {/* Right Column: Leave Lists — only for admins */}
+        {!isEmployee && (
         <div className="card">
           <h3 className="font-bold mb-4" style={{ fontSize: '1.125rem', color: 'var(--text-main)' }}>
-            {isEmployee ? "My Daily Leaves" : "Members on Leave Today"}
+            Members on Leave Today
           </h3>
           
           <div className="flex-col">
@@ -388,7 +418,7 @@ const Dashboard = () => {
                     <div className="leave-item-info">
                       <div className="leave-item-avatar">{avatarInitials}</div>
                       <div className="leave-item-details">
-                        <h4>{isEmployee ? 'Your Request' : empName}</h4>
+                        <h4>{empName}</h4>
                         <p>Type: {leave.type}</p>
                         {leave.reason && <div className="leave-item-note">Note: {leave.reason}</div>}
                       </div>
@@ -403,6 +433,7 @@ const Dashboard = () => {
             )}
           </div>
         </div>
+        )}
 
       </div>
 
@@ -564,20 +595,30 @@ const Dashboard = () => {
             
             <div className="holiday-calendar-view" style={{ display: 'grid', gap: '1.5rem' }}>
               {isSuperAdmin && (
-                <div style={{ background: '#F8FAFC', padding: '1rem', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-                  <h4 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.75rem', color: '#1E293B' }}>Add New Holiday</h4>
-                  <form onSubmit={handleAddHoliday} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
-                    <div style={{ flex: 1 }}>
-                      <label style={{ display: 'block', fontSize: '0.8rem', color: '#64748B', marginBottom: '0.25rem' }}>Holiday Name</label>
-                      <input type="text" className="salary-input" value={newHolidayName} onChange={e => setNewHolidayName(e.target.value)} placeholder="e.g. Christmas" required style={{ margin: 0 }} />
+                <div style={{ background: '#F4F4F4', padding: '1rem', borderRadius: '8px', border: '1px solid #E8E8E8' }}>
+                  <h4 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.75rem', color: '#000000' }}>Add New Holiday</h4>
+                  <form onSubmit={handleAddHoliday} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8rem', color: '#646465', marginBottom: '0.25rem' }}>Holiday Name</label>
+                      <textarea
+                        className="salary-input"
+                        value={newHolidayName}
+                        onChange={e => setNewHolidayName(e.target.value)}
+                        placeholder="e.g. Christmas Day — National Holiday"
+                        required
+                        rows={3}
+                        style={{ margin: 0, resize: 'none' }}
+                      />
                     </div>
-                    <div style={{ flex: 1 }}>
-                      <label style={{ display: 'block', fontSize: '0.8rem', color: '#64748B', marginBottom: '0.25rem' }}>Date</label>
-                      <input type="date" className="salary-input" value={newHolidayDate} onChange={e => setNewHolidayDate(e.target.value)} required style={{ margin: 0 }} />
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
+                      <div style={{ flex: 1 }}>
+                        <label style={{ display: 'block', fontSize: '0.8rem', color: '#646465', marginBottom: '0.25rem' }}>Date</label>
+                        <input type="date" className="salary-input" value={newHolidayDate} onChange={e => setNewHolidayDate(e.target.value)} required style={{ margin: 0 }} />
+                      </div>
+                      <button type="submit" className="btn-teal" style={{ height: '42px', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                        <i className="ri-add-line" style={{ marginRight: '0.25rem' }}></i> Add
+                      </button>
                     </div>
-                    <button type="submit" className="btn-teal" style={{ height: '42px', display: 'flex', alignItems: 'center' }}>
-                      <i className="ri-add-line" style={{ marginRight: '0.25rem' }}></i> Add
-                    </button>
                   </form>
                 </div>
               )}
@@ -586,20 +627,20 @@ const Dashboard = () => {
                 {holidays.map(h => {
                   const d = new Date(h.date);
                   return (
-                    <div key={h.id} style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)' }}>
-                      <div style={{ background: '#4318FF', color: 'white', padding: '0.5rem', textAlign: 'center', fontWeight: 600, fontSize: '0.9rem' }}>
+                    <div key={h.id} style={{ background: 'white', border: '1px solid #E8E8E8', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)' }}>
+                      <div style={{ background: '#003B2C', color: 'white', padding: '0.5rem', textAlign: 'center', fontWeight: 600, fontSize: '0.9rem' }}>
                         {d.toLocaleString('default', { month: 'short', year: 'numeric' })}
                       </div>
                       <div style={{ padding: '1rem', textAlign: 'center' }}>
-                        <div style={{ fontSize: '2.5rem', fontWeight: 700, color: '#1E293B', lineHeight: 1 }}>{d.getDate()}</div>
-                        <div style={{ fontSize: '0.85rem', color: '#64748B', marginTop: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{d.toLocaleString('default', { weekday: 'short' })}</div>
-                        <div style={{ marginTop: '0.75rem', fontWeight: 600, color: '#2B3674', fontSize: '0.95rem', minHeight: '2.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{h.name}</div>
+                        <div style={{ fontSize: '2.5rem', fontWeight: 700, color: '#000000', lineHeight: 1 }}>{d.getDate()}</div>
+                        <div style={{ fontSize: '0.85rem', color: '#646465', marginTop: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{d.toLocaleString('default', { weekday: 'short' })}</div>
+                        <div style={{ marginTop: '0.75rem', fontWeight: 600, color: '#006742', fontSize: '0.95rem', minHeight: '2.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{h.name}</div>
                       </div>
                     </div>
                   );
                 })}
                 {holidays.length === 0 && (
-                  <p style={{ color: '#64748B', gridColumn: '1 / -1', textAlign: 'center', padding: '2rem 0', fontStyle: 'italic' }}>No upcoming holidays found.</p>
+                  <p style={{ color: '#646465', gridColumn: '1 / -1', textAlign: 'center', padding: '2rem 0', fontStyle: 'italic' }}>No upcoming holidays found.</p>
                 )}
               </div>
             </div>

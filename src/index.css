@@ -1,23 +1,33 @@
 :root {
-  --primary: #4318FF;
-  --primary-hover: #3311db;
-  --secondary: #F4F7FE;
-  --sidebar-bg: #111C44;
-  --sidebar-text: #A3AED0;
-  --sidebar-active: #FFFFFF;
-  --text-main: #2B3674;
-  --text-muted: #A3AED0;
-  --bg-main: #F4F7FE;
-  --card-bg: #FFFFFF;
-  --danger: #EE5D50;
-  --success: #05CD99;
-  --warning: #FFCE20;
-  --border: #E0E5F2;
-  --shadow: 0px 18px 40px rgba(112, 144, 176, 0.12);
-  --radius: 20px;
-  --transition: all 0.3s ease;
-  --font-primary: 'Readex Pro', sans-serif;
-  --font-secondary: 'Instrument Sans', sans-serif;
+  /* Brand Colors */
+  --black:       #000000;
+  --dark-gray:   #494949;
+  --medium-gray: #646465;
+  --deep-green:  #003B2C;
+  --rich-green:  #006742;
+  --neo-green:   #00A87E;
+  --soft-mint:   #E8F2EF;
+  --soft-gray:   #E8E8E8;
+  --ultra-light: #F4F4F4;
+  --white:       #FFFFFF;
+
+  /* Semantic Tokens */
+  --primary:       #006742;   /* Rich Green */
+  --primary-hover: #003B2C;   /* Deep Forest Green */
+  --secondary:     #E8F2EF;   /* Soft Mint */
+  --text-main:     #000000;   /* Black */
+  --text-muted:    #646465;   /* Medium Gray */
+  --bg-main:       #F4F4F4;   /* Ultra Light Gray */
+  --card-bg:       #FFFFFF;   /* White */
+  --border:        #E8E8E8;   /* Soft Gray */
+  --danger:        #C0392B;   /* Dark Red – errors only */
+  --success:       #00A87E;   /* Neo Green */
+  --warning:       #CA8A04;   /* Amber */
+  --shadow:        0px 8px 24px rgba(0, 59, 44, 0.08);
+  --radius:        20px;
+  --transition:    all 0.3s ease;
+  --font-primary:  'Readex Pro', sans-serif;
+  --font-secondary:'Instrument Sans', sans-serif;
 }
 
 * {
@@ -109,7 +119,7 @@ h1, h2, h3, h4, h5, h6, .page-title {
 }
 
 .btn-outline:hover {
-  background: rgba(67, 24, 255, 0.05);
+  background: rgba(0, 103, 66, 0.05);
 }
 
 .input-group {
@@ -136,7 +146,7 @@ h1, h2, h3, h4, h5, h6, .page-title {
 
 .input-group input:focus, .input-group select:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(67, 24, 255, 0.1);
+  box-shadow: 0 0 0 3px rgba(0, 103, 66, 0.1);
 }
 
 table {
@@ -169,10 +179,10 @@ td {
   display: inline-block;
 }
 
-.badge.success { background: rgba(5, 205, 153, 0.1); color: var(--success); }
-.badge.warning { background: rgba(255, 206, 32, 0.1); color: var(--warning); }
-.badge.danger { background: rgba(238, 93, 80, 0.1); color: var(--danger); }
-.badge.primary { background: rgba(67, 24, 255, 0.1); color: var(--primary); }
+.badge.success { background: rgba(0, 168, 126, 0.1); color: var(--success); }
+.badge.warning { background: rgba(202, 138, 4, 0.1); color: var(--warning); }
+.badge.danger { background: rgba(192, 57, 43, 0.1); color: var(--danger); }
+.badge.primary { background: rgba(0, 103, 66, 0.1); color: var(--primary); }
 
 /* Layout */
 .app-container {
@@ -185,22 +195,22 @@ td {
 .sidebar {
   width: 280px;
   background: #FFFFFF;
-  color: #A3AED0;
+  color: #646465;
   display: flex;
   flex-direction: column;
   transition: var(--transition);
-  border-right: 1px solid #E0E5F2;
+  border-right: 1px solid #E8E8E8;
 }
 
 .sidebar-logo {
   padding: 2rem 1.5rem;
   font-size: 1.5rem;
   font-weight: 700;
-  color: #2B3674;
+  color: #000000;
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  border-bottom: 1px solid #F4F7FE;
+  border-bottom: 1px solid #F4F4F4;
 }
 
 .sidebar-menu {
@@ -217,7 +227,7 @@ td {
   gap: 1rem;
   padding: 1rem 1.25rem;
   border-radius: 12px;
-  color: #A3AED0;
+  color: #646465;
   text-decoration: none;
   font-weight: 600;
   transition: var(--transition);
@@ -400,13 +410,13 @@ td {
 .login-header h2 {
   font-size: 2.25rem;
   font-weight: 700;
-  color: #2B3674;
+  color: #000000;
   margin-bottom: 0.5rem;
 }
 
 .login-header p {
   font-size: 1rem;
-  color: #A3AED0;
+  color: #646465;
   font-weight: 500;
 }
 
@@ -420,17 +430,17 @@ td {
 .login-input-group label {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #2B3674;
+  color: #000000;
 }
 
 .login-input-group input {
   padding: 1rem 1.25rem;
-  border: 1px solid #E0E5F2;
+  border: 1px solid #E8E8E8;
   border-radius: 16px;
-  background-color: #F8F9FC;
+  background-color: #F4F4F4;
   outline: none;
   font-size: 0.95rem;
-  color: #2B3674;
+  color: #000000;
   transition: var(--transition);
 }
 
@@ -453,7 +463,7 @@ td {
   gap: 0.5rem;
   cursor: pointer;
   font-size: 0.875rem;
-  color: #707EAE;
+  color: #646465;
   font-weight: 500;
 }
 
@@ -504,8 +514,8 @@ td {
 }
 
 .demo-credentials-card {
-  background: #F8F9FC;
-  border: 1px solid #E0E5F2;
+  background: #F4F4F4;
+  border: 1px solid #E8E8E8;
   border-radius: 16px;
   padding: 1.25rem 1.5rem;
   margin-top: 2rem;
@@ -517,13 +527,13 @@ td {
 .demo-credentials-card .demo-title {
   font-size: 0.875rem;
   font-weight: 700;
-  color: #2B3674;
+  color: #000000;
   margin-bottom: 0.25rem;
 }
 
 .demo-credentials-card .demo-item {
   font-size: 0.825rem;
-  color: #707EAE;
+  color: #646465;
   cursor: pointer;
   transition: var(--transition);
   padding: 6px 10px;
@@ -535,12 +545,12 @@ td {
 }
 
 .demo-credentials-card .demo-item:hover {
-  background-color: rgba(0, 168, 132, 0.05);
-  color: #00A884;
+  background-color: rgba(0, 103, 66, 0.05);
+  color: #006742;
 }
 
 .demo-credentials-card .demo-item strong {
-  color: #2B3674;
+  color: #000000;
 }
 
 .demo-credentials-card .demo-click-badge {
@@ -586,10 +596,10 @@ td {
   font-size: 1.5rem;
 }
 
-.stat-icon.primary { background: rgba(67, 24, 255, 0.1); color: var(--primary); }
-.stat-icon.success { background: rgba(5, 205, 153, 0.1); color: var(--success); }
-.stat-icon.warning { background: rgba(255, 206, 32, 0.1); color: var(--warning); }
-.stat-icon.danger { background: rgba(238, 93, 80, 0.1); color: var(--danger); }
+.stat-icon.primary { background: rgba(0, 103, 66, 0.1); color: var(--primary); }
+.stat-icon.success { background: rgba(0, 168, 126, 0.1); color: var(--success); }
+.stat-icon.warning { background: rgba(202, 138, 4, 0.1); color: var(--warning); }
+.stat-icon.danger { background: rgba(192, 57, 43, 0.1); color: var(--danger); }
 
 .stat-info h4 {
   color: var(--text-muted);
@@ -696,13 +706,13 @@ td {
 }
 
 .dashboard-card-custom.blue-theme {
-  background-color: #EDF4FE;
+  background-color: #E8F2EF;
 }
 .dashboard-card-custom.blue-theme .card-icon-wrapper {
-  color: #4318FF;
+  color: #006742;
 }
 .dashboard-card-custom.blue-theme .card-value {
-  color: #4318FF;
+  color: #006742;
 }
 
 .dashboard-card-custom .card-info {
@@ -765,15 +775,15 @@ td {
 }
 
 .alert-banner.info {
-  background-color: #EDF4FE;
-  border-color: #D6E4FF;
-  color: #2B3674;
+  background-color: #E8F2EF;
+  border-color: #C5DDD6;
+  color: #003B2C;
 }
 .alert-banner.info .alert-title {
-  color: #4318FF;
+  color: #006742;
 }
 .alert-banner.info .alert-icon {
-  color: #4318FF;
+  color: #006742;
 }
 
 .alert-banner.success {
@@ -810,8 +820,8 @@ td {
 
 .btn-outline-blue {
   background: transparent;
-  color: #4318FF;
-  border: 1px solid #4318FF;
+  color: #006742;
+  border: 1px solid #006742;
   padding: 0.75rem 1.5rem;
   border-radius: 12px;
   font-weight: 600;
@@ -825,7 +835,7 @@ td {
   width: 100%;
 }
 .btn-outline-blue:hover {
-  background: rgba(67, 24, 255, 0.05);
+  background: rgba(0, 103, 66, 0.06);
 }
 
 /* Leave requests styling */
@@ -871,12 +881,12 @@ td {
 .leave-item-details h4 {
   font-size: 0.95rem;
   font-weight: 700;
-  color: #2B3674;
+  color: #000000;
 }
 
 .leave-item-details p {
   font-size: 0.8rem;
-  color: #A3AED0;
+  color: #646465;
   font-weight: 500;
 }
 
@@ -951,11 +961,11 @@ td {
 }
 
 .leave-metric-card.comp-off {
-  background-color: #EDF4FE;
+  background-color: #E8F2EF;
 }
 .leave-metric-card.comp-off .metric-icon-box {
   background-color: #FFFFFF;
-  color: #4318FF;
+  color: #006742;
 }
 
 .leave-metric-card .metric-info {
@@ -968,7 +978,7 @@ td {
 .leave-metric-card .metric-title {
   font-size: 0.9rem;
   font-weight: 700;
-  color: #2B3674;
+  color: #000000;
 }
 
 .leave-metric-values {
@@ -991,7 +1001,7 @@ td {
 .leave-metric-num {
   font-size: 1.1rem;
   font-weight: 700;
-  color: #2B3674;
+  color: #000000;
 }
 
 /* Floating Success Toast notification in bottom right */
@@ -1000,17 +1010,17 @@ td {
   bottom: 2rem;
   right: 2rem;
   background: #FFFFFF;
-  box-shadow: 0px 10px 30px rgba(112, 144, 176, 0.15);
+  box-shadow: 0px 8px 24px rgba(0, 59, 44, 0.1);
   border-radius: 12px;
   padding: 0.875rem 1.25rem;
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  border-left: 4px solid #00A884;
+  border-left: 4px solid #00A87E;
   z-index: 9999;
   font-weight: 600;
   font-size: 0.875rem;
-  color: #2B3674;
+  color: #000000;
   animation: slideInUp 0.3s ease-out;
 }
 
@@ -1069,7 +1079,7 @@ td {
 .leave-balance-type {
   font-weight: 700;
   font-size: 0.95rem;
-  color: #2B3674;
+  color: #000000;
 }
 
 .leave-balance-nums {
@@ -1169,7 +1179,7 @@ td {
 }
 
 .leave-tab-count.pending {
-  background: #EE5D50 !important;
+  background: #C0392B !important;
   color: #fff !important;
 }
 
@@ -1230,7 +1240,7 @@ td {
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #4318FF 0%, #00A884 100%);
+  background: linear-gradient(135deg, #003B2C 0%, #00A87E 100%);
   color: #fff;
   font-size: 0.75rem;
   font-weight: 700;
@@ -1313,8 +1323,8 @@ td {
   align-items: center;
   gap: 0.5rem;
   padding: 0.45rem 0.9rem;
-  background: #EDF4FE;
-  color: #4318FF;
+  background: #E8F2EF;
+  color: #006742;
   border-radius: 20px;
   font-size: 0.82rem;
   font-weight: 500;
@@ -1361,10 +1371,10 @@ td {
   box-shadow: 0px 22px 45px rgba(112,144,176,0.12);
 }
 
-.salary-breakdown-card.blue   { border-top: 4px solid #4318FF; }
-.salary-breakdown-card.green  { border-top: 4px solid #05CD99; }
-.salary-breakdown-card.red    { border-top: 4px solid #EE5D50; }
-.salary-breakdown-card.purple { border-top: 4px solid #FFCE20; }
+.salary-breakdown-card.blue   { border-top: 4px solid #006742; }
+.salary-breakdown-card.green  { border-top: 4px solid #00A87E; }
+.salary-breakdown-card.red    { border-top: 4px solid #494949; }
+.salary-breakdown-card.purple { border-top: 4px solid #003B2C; }
 
 .sbc-label {
   font-size: 0.85rem;
@@ -1377,10 +1387,10 @@ td {
   font-weight: 700;
 }
 
-.sbc-value.blue   { color: #4318FF; }
-.sbc-value.green  { color: #05CD99; }
-.sbc-value.red    { color: #EE5D50; }
-.sbc-value.purple { color: #FFCE20; }
+.sbc-value.blue   { color: #006742; }
+.sbc-value.green  { color: #00A87E; }
+.sbc-value.red    { color: #494949; }
+.sbc-value.purple { color: #003B2C; }
 
 /* Tab bar for superadmin */
 .salary-tabs {
@@ -1444,8 +1454,8 @@ td {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  background: rgba(67,24,255,0.05);
-  color: #4318FF;
+  background: rgba(0, 103, 66, 0.08);
+  color: #006742;
   border: none;
   border-radius: 8px;
   padding: 0.4rem 0.75rem;
@@ -1455,7 +1465,7 @@ td {
 }
 
 .salary-payslip-btn:hover {
-  background: rgba(67,24,255,0.12);
+  background: rgba(0, 103, 66, 0.16);
 }
 
 /* Empty state for tables */
@@ -1475,8 +1485,8 @@ td {
   flex-direction: column;
   gap: 0.2rem;
 }
-.salary-emp-name { font-weight: 600; color: #2B3674; }
-.salary-emp-code { font-size: 0.78rem; color: #A3AED0; }
+.salary-emp-name { font-weight: 600; color: #000000; }
+.salary-emp-code { font-size: 0.78rem; color: #646465; }
 
 /* Add Payment Modal */
 .salary-modal-overlay {
@@ -1506,14 +1516,14 @@ td {
   align-items: center;
   margin-bottom: 1.2rem;
 }
-.salary-modal-title { font-size: 1.25rem; font-weight: 700; color: #2B3674; }
-.salary-modal-sub   { font-size: 0.9rem; color: #A3AED0; }
+.salary-modal-title { font-size: 1.25rem; font-weight: 700; color: #000000; }
+.salary-modal-sub   { font-size: 0.9rem; color: #646465; }
 .salary-modal-close {
   background: transparent;
   border: none;
   font-size: 1.2rem;
   cursor: pointer;
-  color: #707EAE;
+  color: #646465;
 }
 
 /* Custom select (employee dropdown) */
@@ -1553,10 +1563,10 @@ td {
   font-size: 0.9rem;
 }
 .salary-dropdown-item:hover,
-.salary-dropdown-item.selected { background: var(--primary-hover); color: #fff; }
+.salary-dropdown-item.selected { background: #003B2C; color: #fff; }
 
 .salary-field { margin-bottom: 1rem; }
-.salary-field-label { font-weight: 600; margin-bottom: 0.3rem; display: block; font-size: 0.85rem; color: #2B3674; }
+.salary-field-label { font-weight: 600; margin-bottom: 0.3rem; display: block; font-size: 0.85rem; color: #000000; }
 
 .salary-required { color: var(--danger); }
 .salary-input {
@@ -1593,7 +1603,7 @@ td {
 .salary-cancel-btn {
   background: transparent;
   border: 1px solid var(--border);
-  color: #707EAE;
+  color: #646465;
   padding: 0.55rem 1rem;
   border-radius: 10px;
   cursor: pointer;
@@ -1644,8 +1654,8 @@ td {
 /* Section cards used throughout Salary page */
 .salary-section-card { background:#fff; border-radius:var(--radius); padding:1.5rem; box-shadow:var(--shadow); margin-bottom:1.5rem; }
 .salary-section-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:1.2rem; }
-.salary-section-title { font-size:1.25rem; font-weight:700; color:#2B3674; }
-.salary-section-sub { font-size:0.9rem; color:#A3AED0; }
+.salary-section-title { font-size:1.25rem; font-weight:700; color:#000000; }
+.salary-section-sub { font-size:0.9rem; color:#646465; }
 
 /* Adjust generic .btn for Salary page */
 .btn.salary-btn { background: var(--primary); color:#fff; }
@@ -1662,12 +1672,12 @@ td {
 .salary-page-title {
   font-size: 1.45rem;
   font-weight: 700;
-  color: #2B3674;
+  color: #000000;
   margin: 0 0 0.2rem;
 }
 .salary-page-sub {
   font-size: 0.9rem;
-  color: #A3AED0;
+  color: #646465;
   margin: 0;
 }
 
@@ -1695,11 +1705,11 @@ td {
   border-radius: 8px 8px 0 0;
   transition: color 0.2s, border-color 0.2s;
 }
-.salary-tab-btn:hover { color: #4318FF; }
+.salary-tab-btn:hover { color: #006742; }
 .salary-tab-btn.active {
-  color: #4318FF;
-  border-bottom: 2px solid #4318FF;
-  background: rgba(67,24,255,0.04);
+  color: #006742;
+  border-bottom: 2px solid #006742;
+  background: rgba(0, 103, 66, 0.04);
 }
 
 /* ── Salary Breakdown Grid (4 coloured cards) ── */
@@ -1721,16 +1731,16 @@ td {
   flex-direction: column;
   gap: 0.4rem;
 }
-.salary-breakdown-card.blue   { background: #EFF4FB; }
-.salary-breakdown-card.green  { background: #E8F9F4; }
-.salary-breakdown-card.red    { background: #FFF0F0; }
-.salary-breakdown-card.purple { background: #F1EEFF; }
-.sbc-label { font-size: 0.82rem; color: #707EAE; margin: 0; }
+.salary-breakdown-card.blue   { background: #E8F2EF; }
+.salary-breakdown-card.green  { background: #E0F5EE; }
+.salary-breakdown-card.red    { background: #F2F2F2; }
+.salary-breakdown-card.purple { background: #E8F2EF; }
+.sbc-label { font-size: 0.82rem; color: #646465; margin: 0; }
 .sbc-value { font-size: 1.15rem; font-weight: 700; margin: 0; }
-.sbc-value.blue   { color: #4318FF; }
-.sbc-value.green  { color: #00A884; }
-.sbc-value.red    { color: #EE5D50; }
-.sbc-value.purple { color: #7551FF; }
+.sbc-value.blue   { color: #006742; }
+.sbc-value.green  { color: #00A87E; }
+.sbc-value.red    { color: #494949; }
+.sbc-value.purple { color: #003B2C; }
 
 /* ── Salary Table ── */
 .salary-table-wrap { overflow-x: auto; }
@@ -1744,25 +1754,25 @@ td {
   padding: 0.6rem 1rem;
   font-size: 0.78rem;
   font-weight: 700;
-  color: #A3AED0;
-  border-bottom: 1px solid #EFF4FB;
+  color: #646465;
+  border-bottom: 1px solid #E8E8E8;
   white-space: nowrap;
 }
 .salary-table td {
   padding: 0.85rem 1rem;
-  color: #2B3674;
-  border-bottom: 1px solid #F4F7FE;
+  color: #000000;
+  border-bottom: 1px solid #F4F4F4;
 }
 .salary-table tr:last-child td { border-bottom: none; }
-.salary-table tbody tr:hover { background: #F9FAFF; }
+.salary-table tbody tr:hover { background: #F4F4F4; }
 
 /* Payslip download button inside table */
 .salary-payslip-btn {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  background: rgba(67,24,255,0.08);
-  color: #4318FF;
+  background: rgba(0, 103, 66, 0.08);
+  color: #006742;
   border: none;
   border-radius: 8px;
   padding: 0.4rem 0.75rem;
@@ -1770,7 +1780,7 @@ td {
   font-size: 0.8rem;
   transition: background 0.2s;
 }
-.salary-payslip-btn:hover { background: rgba(67,24,255,0.16); }
+.salary-payslip-btn:hover { background: rgba(0, 103, 66, 0.16); }
 
 /* Dashboard KPI Grid */
 .dashboard-kpi-grid {

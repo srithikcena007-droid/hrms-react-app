@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { AuthContext } from '../context/AuthContext';
 import { supabase } from '../utils/supabaseClient';
+
+const DEPARTMENTS = ['Development', 'Design', 'Operations', 'Sales'];
 
 const Attendance = () => {
   const { user } = useContext(AuthContext);
@@ -11,6 +13,7 @@ const Attendance = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [employees, setEmployees] = useState([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(user?.id || '');
+  const [selectedDepartment, setSelectedDepartment] = useState('all'); // for superadmin
   
   const [attendanceRecords, setAttendanceRecords] = useState({});
   const [leaveRecords, setLeaveRecords] = useState({});
@@ -30,14 +33,13 @@ const Attendance = () => {
   useEffect(() => {
     if (!user) return;
     const fetchEmployees = async () => {
-      let query = supabase.from('employees').select('id, name');
+      let query = supabase.from('employees').select('id, name, department');
       if (user.role === 'admin') {
         query = query.eq('department', user.managed_department || '');
       } else if (user.role === 'employee') {
-        // Employees don't need the list
         return;
       }
-      const { data } = await query;
+      const { data } = await query.order('name', { ascending: true });
       if (data) setEmployees(data);
     };
     if (user.role !== 'employee') fetchEmployees();
@@ -52,6 +54,21 @@ const Attendance = () => {
     }
   }, [employees, user]);
 
+  // When department filter changes (superadmin), reset employee to first of that dept or own
+  const filteredEmployees = useMemo(() => {
+    if (user?.role !== 'superadmin' || selectedDepartment === 'all') return employees;
+    return employees.filter(e => e.department === selectedDepartment);
+  }, [employees, selectedDepartment, user]);
+
+  useEffect(() => {
+    if (user?.role === 'superadmin' && selectedDepartment !== 'all') {
+      // Reset to first employee in dept or own id
+      const first = filteredEmployees.find(e => e.id !== user.id) || filteredEmployees[0];
+      if (first && filteredEmployees.length > 0) setSelectedEmployeeId(first.id);
+      else setSelectedEmployeeId(user.id);
+    }
+  }, [selectedDepartment]);
+
   // Fetch Data for the month
   useEffect(() => {
     if (!selectedEmployeeId) return;
@@ -60,20 +77,17 @@ const Attendance = () => {
       setLoading(true);
       
       const year = currentMonth.getFullYear();
-      const month = currentMonth.getMonth(); // 0-indexed
+      const month = currentMonth.getMonth();
       
-      // Get first and last day of month strings for filtering
       const firstDayDate = new Date(year, month, 1);
       const lastDayDate = new Date(year, month + 1, 0);
       
-      // Convert to local YYYY-MM-DD
       const offset1 = firstDayDate.getTimezoneOffset() * 60000;
       const firstDay = new Date(firstDayDate.getTime() - offset1).toISOString().split('T')[0];
       
       const offset2 = lastDayDate.getTimezoneOffset() * 60000;
       const lastDay = new Date(lastDayDate.getTime() - offset2).toISOString().split('T')[0];
       
-      // Fetch attendance & daily reports
       const { data: attData } = await supabase
         .from('attendance')
         .select('*')
@@ -88,32 +102,41 @@ const Attendance = () => {
         .gte('date', firstDay)
         .lte('date', lastDay);
         
-      // Fetch approved leaves
       const { data: leavesData } = await supabase
         .from('leaves')
         .select('*')
         .eq('employee_id', selectedEmployeeId)
         .eq('status', 'Approved'); 
         
-      // Process Attendance
       const attMap = {};
       (attData || []).forEach(att => {
         const rep = (repData || []).find(r => r.date === att.date);
         
-        // Late logic: Check-in after 10:00 AM
+        // Late logic: Check-in after 10:30 AM
         let isLate = false;
         if (att.check_in) {
-          const timeMatch = att.check_in.match(/(\d+):(\d+)\s*(AM|PM)/i);
-          if (timeMatch) {
-            let h = parseInt(timeMatch[1]);
-            let m = parseInt(timeMatch[2]);
-            let ampm = timeMatch[3].toUpperCase();
-            if (ampm === 'PM' && h !== 12) h += 12;
-            if (ampm === 'AM' && h === 12) h = 0;
-            
-            if (h > 10 || (h === 10 && m > 0)) {
-              isLate = true;
-            }
+          const parts = att.check_in.match(/(\d+):(\d+)/);
+          if (parts) {
+            const h = parseInt(parts[1]);
+            const m = parseInt(parts[2]);
+            if (h > 10 || (h === 10 && m >= 30)) isLate = true;
+          }
+        }
+        
+        // Duration logic
+        let durationHours = 0;
+        let dayType = 'Present'; // default if missing check-out
+        if (att.check_in && att.check_out) {
+          const t1 = new Date(`1970-01-01T${att.check_in}`);
+          const t2 = new Date(`1970-01-01T${att.check_out}`);
+          durationHours = (t2 - t1) / (1000 * 60 * 60);
+          
+          if (durationHours > 6) {
+            dayType = 'Full Day';
+          } else if (durationHours >= 4 && durationHours <= 6) {
+            dayType = 'Half Day';
+          } else {
+            dayType = 'Leave'; // 0 to 4 hours
           }
         }
         
@@ -121,11 +144,12 @@ const Attendance = () => {
           ...att,
           bos_report: rep?.bos_report || '-',
           eod_report: rep?.eod_report || '-',
-          isLate
+          isLate,
+          dayType,
+          durationHours
         };
       });
       
-      // Process Leaves
       const leaveMap = {};
       (leavesData || []).forEach(lv => {
         const d1 = new Date(lv.from_date);
@@ -143,6 +167,49 @@ const Attendance = () => {
     
     fetchData();
   }, [selectedEmployeeId, currentMonth]);
+
+  // --- Stats derived from current month records ---
+  const monthStats = useMemo(() => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    
+    let presentDays = 0;
+    let halfDays = 0;
+    let lateDays = 0;
+    let leaveDays = 0;
+    let absentDays = 0;
+    
+    const todayDate = new Date();
+    const todayOffset = todayDate.getTimezoneOffset() * 60000;
+    const todayStr = new Date(todayDate.getTime() - todayOffset).toISOString().split('T')[0];
+    
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      if (dateStr > todayStr) continue; // don't count future days
+      
+      const dayOfWeek = new Date(year, month, d).getDay();
+      if (dayOfWeek === 0 || dayOfWeek === 6) continue; // skip weekends
+      
+      if (leaveRecords[dateStr]) {
+        leaveDays++;
+      } else if (attendanceRecords[dateStr]) {
+        const att = attendanceRecords[dateStr];
+        if (att.dayType === 'Leave') {
+          leaveDays++;
+        } else if (att.dayType === 'Half Day') {
+          halfDays++;
+        } else {
+          presentDays++;
+        }
+        if (att.isLate) lateDays++;
+      } else {
+        absentDays++;
+      }
+    }
+    
+    return { presentDays, halfDays, lateDays, leaveDays, absentDays };
+  }, [attendanceRecords, leaveRecords, currentMonth]);
 
   // Calendar rendering logic
   const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
@@ -169,44 +236,115 @@ const Attendance = () => {
 
   return (
     <Layout title="Live Attendance List">
+      {/* Monthly Stats Row */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
+        <div style={{ background: '#fff', borderRadius: 16, padding: '1.25rem 1.5rem', boxShadow: 'var(--shadow)', borderTop: '4px solid #006742', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ width: 44, height: 44, background: '#E8F2EF', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#006742', fontSize: '1.25rem', flexShrink: 0 }}>
+            <i className="ri-checkbox-circle-line"></i>
+          </div>
+          <div>
+            <div style={{ fontSize: '0.8rem', color: '#646465', fontWeight: 600 }}>Full Days</div>
+            <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#006742' }}>{monthStats.presentDays}</div>
+          </div>
+        </div>
+        <div style={{ background: '#fff', borderRadius: 16, padding: '1.25rem 1.5rem', boxShadow: 'var(--shadow)', borderTop: '4px solid #F97316', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ width: 44, height: 44, background: '#FFEDD5', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#F97316', fontSize: '1.25rem', flexShrink: 0 }}>
+            <i className="ri-pie-chart-2-line"></i>
+          </div>
+          <div>
+            <div style={{ fontSize: '0.8rem', color: '#646465', fontWeight: 600 }}>Half Days</div>
+            <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#F97316' }}>{monthStats.halfDays}</div>
+          </div>
+        </div>
+        <div style={{ background: '#fff', borderRadius: 16, padding: '1.25rem 1.5rem', boxShadow: 'var(--shadow)', borderTop: '4px solid #494949', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ width: 44, height: 44, background: '#F2F2F2', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#494949', fontSize: '1.25rem', flexShrink: 0 }}>
+            <i className="ri-close-circle-line"></i>
+          </div>
+          <div>
+            <div style={{ fontSize: '0.8rem', color: '#646465', fontWeight: 600 }}>Absent</div>
+            <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#494949' }}>{monthStats.absentDays}</div>
+          </div>
+        </div>
+        <div style={{ background: '#fff', borderRadius: 16, padding: '1.25rem 1.5rem', boxShadow: 'var(--shadow)', borderTop: '4px solid #00A87E', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ width: 44, height: 44, background: '#E0F5EE', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00A87E', fontSize: '1.25rem', flexShrink: 0 }}>
+            <i className="ri-flight-takeoff-line"></i>
+          </div>
+          <div>
+            <div style={{ fontSize: '0.8rem', color: '#646465', fontWeight: 600 }}>Leaves</div>
+            <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#00A87E' }}>{monthStats.leaveDays}</div>
+          </div>
+        </div>
+        <div style={{ background: '#fff', borderRadius: 16, padding: '1.25rem 1.5rem', boxShadow: 'var(--shadow)', borderTop: '4px solid #CA8A04', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ width: 44, height: 44, background: '#FEF3C7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#CA8A04', fontSize: '1.25rem', flexShrink: 0 }}>
+            <i className="ri-time-line"></i>
+          </div>
+          <div>
+            <div style={{ fontSize: '0.8rem', color: '#646465', fontWeight: 600 }}>Late Days</div>
+            <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#CA8A04' }}>{monthStats.lateDays}</div>
+          </div>
+        </div>
+      </div>
+
       <div className="card mb-6 flex flex-col gap-4">
         {/* Header Controls */}
         <div className="flex justify-between items-center" style={{ flexWrap: 'wrap', gap: '1rem' }}>
           <div className="flex items-center gap-4">
-            <button onClick={handlePrevMonth} style={{ padding: '0.5rem', background: '#F1F5F9', borderRadius: 8, color: '#64748B' }}>
+            <button onClick={handlePrevMonth} style={{ padding: '0.5rem', background: '#F4F4F4', borderRadius: 8, color: '#646465' }}>
               <i className="ri-arrow-left-s-line text-xl" />
             </button>
             <h3 className="font-bold text-lg min-w-[150px] text-center" style={{ color: 'var(--text-main)' }}>
               {monthNames[month]} {year}
             </h3>
-            <button onClick={handleNextMonth} style={{ padding: '0.5rem', background: '#F1F5F9', borderRadius: 8, color: '#64748B' }}>
+            <button onClick={handleNextMonth} style={{ padding: '0.5rem', background: '#F4F4F4', borderRadius: 8, color: '#646465' }}>
               <i className="ri-arrow-right-s-line text-xl" />
             </button>
           </div>
 
-          {(user?.role === 'admin' || user?.role === 'superadmin') && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-muted">Filter Employee:</span>
-              <select 
-                className="salary-input m-0" 
-                style={{ minWidth: 200 }} 
-                value={selectedEmployeeId} 
-                onChange={(e) => setSelectedEmployeeId(e.target.value)}
-              >
-                <option value={user.id}>Me ({user.name})</option>
-                {employees.filter(e => e.id !== user.id).map(emp => (
-                  <option key={emp.id} value={emp.id}>{emp.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
+          <div className="flex items-center gap-3" style={{ flexWrap: 'wrap' }}>
+            {/* Department filter for Super Admin only */}
+            {user?.role === 'superadmin' && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-muted">Department:</span>
+                <select
+                  className="salary-input m-0"
+                  style={{ minWidth: 160 }}
+                  value={selectedDepartment}
+                  onChange={e => setSelectedDepartment(e.target.value)}
+                >
+                  <option value="all">All Departments</option>
+                  {DEPARTMENTS.map(d => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {(user?.role === 'admin' || user?.role === 'superadmin') && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-muted">Employee:</span>
+                <select 
+                  className="salary-input m-0" 
+                  style={{ minWidth: 200 }} 
+                  value={selectedEmployeeId} 
+                  onChange={(e) => setSelectedEmployeeId(e.target.value)}
+                >
+                  <option value={user.id}>Me ({user.name})</option>
+                  {(user?.role === 'superadmin' ? filteredEmployees : employees)
+                    .filter(e => e.id !== user.id)
+                    .map(emp => (
+                      <option key={emp.id} value={emp.id}>{emp.name}</option>
+                    ))}
+                </select>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Calendar Grid */}
-        <div style={{ border: '1px solid #E2E8F0', borderRadius: '12px', overflow: 'hidden' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+        <div style={{ border: '1px solid #E8E8E8', borderRadius: '12px', overflow: 'hidden' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', background: '#F4F4F4', borderBottom: '1px solid #E8E8E8' }}>
             {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
-              <div key={i} style={{ padding: '1rem', textAlign: 'center', fontWeight: 600, color: '#64748B', borderRight: i < 6 ? '1px solid #E2E8F0' : 'none' }}>
+              <div key={i} style={{ padding: '0.6rem', textAlign: 'center', fontWeight: 600, color: '#646465', fontSize: '0.85rem', borderRight: i < 6 ? '1px solid #E8E8E8' : 'none' }}>
                 {d}
               </div>
             ))}
@@ -214,7 +352,7 @@ const Attendance = () => {
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
             {blanksArray.map(b => (
-              <div key={`blank-${b}`} style={{ padding: '2rem', borderRight: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0' }}></div>
+              <div key={`blank-${b}`} style={{ padding: '0.5rem', height: 65, borderRight: '1px solid #E8E8E8', borderBottom: '1px solid #E8E8E8' }}></div>
             ))}
             
             {daysArray.map(d => {
@@ -222,63 +360,68 @@ const Attendance = () => {
               const att = attendanceRecords[dateStr];
               const lv = leaveRecords[dateStr];
               
-              // Get today in YYYY-MM-DD local
               const todayDate = new Date();
               const todayOffset = todayDate.getTimezoneOffset() * 60000;
               const todayStr = new Date(todayDate.getTime() - todayOffset).toISOString().split('T')[0];
               
               const isToday = todayStr === dateStr;
               const isClickable = !!att || !!lv;
+              const isWeekend = new Date(year, month, d).getDay() === 0;
               
               let indicator = null;
-              if (lv) {
+              if (lv || (att && att.dayType === 'Leave')) {
                 indicator = (
-                  <div style={{ width: 28, height: 28, background: '#FEE2E2', color: '#EF4444', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1rem', boxShadow: '0 2px 5px rgba(239,68,68,0.2)' }}>
+                  <div style={{ width: 24, height: 24, background: '#FEE2E2', color: '#C0392B', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>
                     L
                   </div>
                 );
               } else if (att) {
-                if (att.isLate) {
+                if (att.dayType === 'Half Day') {
                   indicator = (
-                    <div style={{ width: 28, height: 28, background: '#FEF08A', color: '#CA8A04', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1rem', boxShadow: '0 2px 5px rgba(202,138,4,0.2)' }}>
+                    <div style={{ width: 24, height: 24, background: '#FFEDD5', color: '#F97316', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>
+                      H
+                    </div>
+                  );
+                } else if (att.isLate) {
+                  indicator = (
+                    <div style={{ width: 24, height: 24, background: '#FEF3C7', color: '#CA8A04', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>
                       !
                     </div>
                   );
                 } else {
                   indicator = (
-                    <div style={{ width: 28, height: 28, background: '#D1FAE5', color: '#10B981', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1rem', boxShadow: '0 2px 5px rgba(16,185,129,0.2)' }}>
+                    <div style={{ width: 24, height: 24, background: '#D1FAE5', color: '#006742', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>
                       <i className="ri-check-line"></i>
                     </div>
                   );
                 }
               }
 
-              // Hide bottom border on last row optionally, but let's just keep it simple
               return (
                 <div 
                   key={d} 
                   onClick={() => handleDayClick(dateStr)}
                   style={{ 
-                    padding: '1rem', 
-                    height: 100, 
-                    borderRight: '1px solid #E2E8F0', 
-                    borderBottom: '1px solid #E2E8F0', 
-                    background: isToday ? '#EFF6FF' : 'white',
+                    padding: '0.5rem', 
+                    height: 65, 
+                    borderRight: '1px solid #E8E8E8', 
+                    borderBottom: '1px solid #E8E8E8', 
+                    background: isToday ? '#E8F2EF' : 'white',
                     cursor: isClickable ? 'pointer' : 'default',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
-                    gap: '0.5rem',
+                    gap: '0.3rem',
                     transition: 'background 0.2s',
                   }}
                   onMouseOver={(e) => {
-                    if (isClickable && !isToday) e.currentTarget.style.background = '#F8FAFC';
+                    if (isClickable && !isToday) e.currentTarget.style.background = '#F4F4F4';
                   }}
                   onMouseOut={(e) => {
                     if (isClickable && !isToday) e.currentTarget.style.background = 'white';
                   }}
                 >
-                  <span style={{ fontSize: '1.1rem', color: isToday ? '#3B82F6' : (new Date(year, month, d).getDay() === 0 ? '#EF4444' : '#1E293B'), fontWeight: isToday ? 'bold' : 'normal' }}>
+                  <span style={{ fontSize: '0.95rem', color: isToday ? '#006742' : (isWeekend ? '#C0392B' : '#000000'), fontWeight: isToday ? 'bold' : 'normal' }}>
                     {d}
                   </span>
                   {indicator}
@@ -286,6 +429,21 @@ const Attendance = () => {
               );
             })}
           </div>
+        </div>
+
+        {/* Legend */}
+        <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', paddingTop: '0.5rem' }}>
+          {[
+            { color: '#D1FAE5', textColor: '#006742', label: 'Full Day / Present', symbol: '✓' },
+            { color: '#FFEDD5', textColor: '#F97316', label: 'Half Day', symbol: 'H' },
+            { color: '#FEF3C7', textColor: '#CA8A04', label: 'Late', symbol: '!' },
+            { color: '#FEE2E2', textColor: '#C0392B', label: 'On Leave', symbol: 'L' },
+          ].map(item => (
+            <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#646465' }}>
+              <div style={{ width: 20, height: 20, background: item.color, color: item.textColor, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.7rem', flexShrink: 0 }}>{item.symbol}</div>
+              {item.label}
+            </div>
+          ))}
         </div>
       </div>
 
@@ -295,47 +453,51 @@ const Attendance = () => {
           <div className="salary-modal" style={{ maxWidth: 450 }} onClick={e => e.stopPropagation()}>
             <div className="salary-modal-header">
               <div>
-                <h3 className="salary-modal-title">Details for {new Date(selectedDateDetails.date).toDateString()}</h3>
+                <h3 className="salary-modal-title">Details for {new Date(selectedDateDetails.date + 'T00:00:00').toDateString()}</h3>
               </div>
               <button className="salary-modal-close" onClick={() => setSelectedDateDetails(null)}><i className="ri-close-line" /></button>
             </div>
             <div style={{ padding: '0 0 1rem' }}>
               {selectedDateDetails.lv ? (
-                <div style={{ background: '#FFF2F2', padding: '1rem', borderRadius: 8, borderLeft: '4px solid #EE5D50', marginBottom: '1rem' }}>
-                  <h4 style={{ color: '#EE5D50', fontWeight: 'bold', marginBottom: '0.5rem' }}><i className="ri-calendar-event-line"></i> On Leave</h4>
-                  <p style={{ fontSize: '0.9rem', color: '#1E293B', marginBottom: '0.25rem' }}><strong>Type:</strong> {selectedDateDetails.lv.type}</p>
-                  <p style={{ fontSize: '0.9rem', color: '#1E293B' }}><strong>Reason:</strong> {selectedDateDetails.lv.reason || 'N/A'}</p>
+                <div style={{ background: '#FFF2F2', padding: '1rem', borderRadius: 8, borderLeft: '4px solid #C0392B', marginBottom: '1rem' }}>
+                  <h4 style={{ color: '#C0392B', fontWeight: 'bold', marginBottom: '0.5rem' }}><i className="ri-calendar-event-line"></i> On Leave</h4>
+                  <p style={{ fontSize: '0.9rem', color: '#000000', marginBottom: '0.25rem' }}><strong>Type:</strong> {selectedDateDetails.lv.type}</p>
+                  <p style={{ fontSize: '0.9rem', color: '#000000' }}><strong>Reason:</strong> {selectedDateDetails.lv.reason || 'N/A'}</p>
                 </div>
               ) : null}
               
               {selectedDateDetails.att ? (
                 <div>
                   <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div style={{ background: '#F8FAFC', padding: '1rem', borderRadius: 8 }}>
-                      <p style={{ fontSize: '0.8rem', color: '#64748B', fontWeight: 600 }}>Check In</p>
-                      <p style={{ fontSize: '1.1rem', color: '#1E293B', fontWeight: 'bold' }}>{selectedDateDetails.att.check_in || '-'}</p>
+                    <div style={{ background: '#F4F4F4', padding: '1rem', borderRadius: 8 }}>
+                      <p style={{ fontSize: '0.8rem', color: '#646465', fontWeight: 600 }}>Check In</p>
+                      <p style={{ fontSize: '1.1rem', color: '#000000', fontWeight: 'bold' }}>{selectedDateDetails.att.check_in || '-'}</p>
                       {selectedDateDetails.att.isLate && (
-                        <span style={{ fontSize: '0.75rem', color: '#D97706', background: '#FEF3C7', padding: '2px 6px', borderRadius: 4, fontWeight: 'bold' }}>LATE</span>
+                        <span style={{ fontSize: '0.75rem', color: '#CA8A04', background: '#FEF3C7', padding: '2px 6px', borderRadius: 4, fontWeight: 'bold' }}>LATE</span>
                       )}
                     </div>
-                    <div style={{ background: '#F8FAFC', padding: '1rem', borderRadius: 8 }}>
-                      <p style={{ fontSize: '0.8rem', color: '#64748B', fontWeight: 600 }}>Check Out</p>
-                      <p style={{ fontSize: '1.1rem', color: '#1E293B', fontWeight: 'bold' }}>{selectedDateDetails.att.check_out || '-'}</p>
+                    <div style={{ background: '#F4F4F4', padding: '1rem', borderRadius: 8 }}>
+                      <p style={{ fontSize: '0.8rem', color: '#646465', fontWeight: 600 }}>Check Out</p>
+                      <p style={{ fontSize: '1.1rem', color: '#000000', fontWeight: 'bold' }}>{selectedDateDetails.att.check_out || '-'}</p>
+                      <span style={{ fontSize: '0.75rem', color: '#006742', background: '#E8F2EF', padding: '2px 6px', borderRadius: 4, fontWeight: 'bold' }}>
+                        {selectedDateDetails.att.dayType.toUpperCase()}
+                        {selectedDateDetails.att.durationHours ? ` (${selectedDateDetails.att.durationHours.toFixed(1)}h)` : ''}
+                      </span>
                     </div>
                   </div>
                   
-                  <div style={{ background: '#F0F9FF', padding: '1rem', borderRadius: 8, marginBottom: '0.5rem' }}>
-                    <p style={{ fontSize: '0.8rem', color: '#0369A1', fontWeight: 600, marginBottom: '0.25rem' }}>BOS Report</p>
-                    <p style={{ fontSize: '0.9rem', color: '#1E293B' }}>{selectedDateDetails.att.bos_report || 'Not submitted'}</p>
+                  <div style={{ background: '#E8F2EF', padding: '1rem', borderRadius: 8, marginBottom: '0.5rem' }}>
+                    <p style={{ fontSize: '0.8rem', color: '#006742', fontWeight: 600, marginBottom: '0.25rem' }}>BOS Report</p>
+                    <p style={{ fontSize: '0.9rem', color: '#000000' }}>{selectedDateDetails.att.bos_report || 'Not submitted'}</p>
                   </div>
                   
-                  <div style={{ background: '#F0FDF4', padding: '1rem', borderRadius: 8 }}>
-                    <p style={{ fontSize: '0.8rem', color: '#166534', fontWeight: 600, marginBottom: '0.25rem' }}>EOD Report</p>
-                    <p style={{ fontSize: '0.9rem', color: '#1E293B' }}>{selectedDateDetails.att.eod_report || 'Not submitted'}</p>
+                  <div style={{ background: '#E0F5EE', padding: '1rem', borderRadius: 8 }}>
+                    <p style={{ fontSize: '0.8rem', color: '#00A87E', fontWeight: 600, marginBottom: '0.25rem' }}>EOD Report</p>
+                    <p style={{ fontSize: '0.9rem', color: '#000000' }}>{selectedDateDetails.att.eod_report || 'Not submitted'}</p>
                   </div>
                 </div>
               ) : !selectedDateDetails.lv ? (
-                <p style={{ color: '#64748B' }}>No attendance record found for this day.</p>
+                <p style={{ color: '#646465' }}>No attendance record found for this day.</p>
               ) : null}
             </div>
           </div>
