@@ -4,7 +4,10 @@ import { supabase } from '../utils/supabaseClient';
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    const savedUser = localStorage.getItem('hrms_user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
 
   // Login: query employees table by email + password
   const login = async (email, password) => {
@@ -30,15 +33,23 @@ export const AuthProvider = ({ children }) => {
     }
 
     setUser(data);
+    localStorage.setItem('hrms_user', JSON.stringify(data));
     return { success: true };
   };
 
   const logout = () => {
     setUser(null);
+    localStorage.removeItem('hrms_user');
   };
 
   const updateUser = (updatedFields) => {
-    setUser(prev => prev ? { ...prev, ...updatedFields } : prev);
+    setUser(prev => {
+      const newUser = prev ? { ...prev, ...updatedFields } : prev;
+      if (newUser) {
+        localStorage.setItem('hrms_user', JSON.stringify(newUser));
+      }
+      return newUser;
+    });
   };
 
   // Update password in Supabase
@@ -50,7 +61,9 @@ export const AuthProvider = ({ children }) => {
       .eq('id', user.id);
 
     if (error) return { success: false, message: error.message };
-    setUser({ ...user, password: newPassword });
+    const updatedUser = { ...user, password: newPassword };
+    setUser(updatedUser);
+    localStorage.setItem('hrms_user', JSON.stringify(updatedUser));
     return { success: true };
   };
 

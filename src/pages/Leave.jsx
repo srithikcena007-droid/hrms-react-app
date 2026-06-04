@@ -62,7 +62,7 @@ const GrantCompOffModal = ({ onClose, onGrant }) => {
           </div>
           <div className="salary-modal-actions">
             <button type="button" className="salary-cancel-btn" onClick={onClose} disabled={submitting}>Cancel</button>
-            <button type="submit" className="salary-submit-btn" disabled={submitting} style={{ background: '#4318FF' }}>
+            <button type="submit" className="salary-submit-btn" disabled={submitting} style={{ background: '#003B2C' }}>
               {submitting ? 'Granting...' : 'Grant Days'}
             </button>
           </div>
