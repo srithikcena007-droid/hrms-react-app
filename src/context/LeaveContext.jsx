@@ -69,9 +69,8 @@ export const LeaveProvider = ({ children }) => {
   }, [user]);
 
   // Apply for leave
-  const applyLeave = async ({ type, from, to, reason }) => {
+  const applyLeave = async ({ type, from, to, reason, days }) => {
     if (!user) return;
-    const days = calcDays(from, to);
     const isAutoApproved = user.role === 'superadmin';
     const status = isAutoApproved ? 'Approved' : 'Pending';
 
@@ -93,6 +92,24 @@ export const LeaveProvider = ({ children }) => {
       }
     } else {
       console.error('Error applying leave:', error);
+    }
+  };
+
+  // Update a pending leave request
+  const updateLeave = async ({ id, type, from, to, reason, days }) => {
+    if (!user) return;
+    const { error } = await supabase.from('leaves').update({
+      type,
+      from_date: from,
+      to_date: to,
+      days,
+      reason
+    }).eq('id', id).eq('employee_id', user.id);
+
+    if (!error) {
+      await fetchLeaveData();
+    } else {
+      console.error('Error updating leave:', error);
     }
   };
 
@@ -206,6 +223,7 @@ export const LeaveProvider = ({ children }) => {
     <LeaveContext.Provider value={{
       requests,
       applyLeave,
+      updateLeave,
       approveLeave,
       rejectLeave,
       grantCompOff,

@@ -154,7 +154,14 @@ const Dashboard = () => {
     const today = now.toISOString().split('T')[0];
 
     // Attendance manual upsert
-    const { data: existingAtt } = await supabase.from('attendance').select('id').eq('employee_id', user.id).eq('date', today).maybeSingle();
+    const { data: existingAtt } = await supabase.from('attendance').select('id, check_in').eq('employee_id', user.id).eq('date', today).maybeSingle();
+    
+    if (existingAtt && existingAtt.check_in) {
+      showToast('You have already checked in today!');
+      setShowBosModal(false);
+      return;
+    }
+
     if (existingAtt) {
       await supabase.from('attendance').update({
         check_in: timeStr,
@@ -170,8 +177,10 @@ const Dashboard = () => {
     }
 
     // Daily Reports manual upsert
-    const { data: existingRep } = await supabase.from('daily_reports').select('id').eq('employee_id', user.id).eq('date', today).maybeSingle();
-    if (existingRep) {
+    const { data: existingRep } = await supabase.from('daily_reports').select('id, bos_submitted_at').eq('employee_id', user.id).eq('date', today).maybeSingle();
+    if (existingRep && existingRep.bos_submitted_at) {
+       // already submitted bos, skip
+    } else if (existingRep) {
       await supabase.from('daily_reports').update({
         bos_report: bosReportText,
         bos_submitted_at: now.toISOString()
@@ -200,14 +209,23 @@ const Dashboard = () => {
     const today = now.toISOString().split('T')[0];
 
     // Attendance manual update
-    const { data: existingAtt } = await supabase.from('attendance').select('id').eq('employee_id', user.id).eq('date', today).maybeSingle();
+    const { data: existingAtt } = await supabase.from('attendance').select('id, check_out').eq('employee_id', user.id).eq('date', today).maybeSingle();
+    
+    if (existingAtt && existingAtt.check_out) {
+      showToast('You have already checked out today!');
+      setShowEodModal(false);
+      return;
+    }
+
     if (existingAtt) {
       await supabase.from('attendance').update({ check_out: timeStr }).eq('id', existingAtt.id);
     }
 
     // Daily Reports manual upsert
-    const { data: existingRep } = await supabase.from('daily_reports').select('id').eq('employee_id', user.id).eq('date', today).maybeSingle();
-    if (existingRep) {
+    const { data: existingRep } = await supabase.from('daily_reports').select('id, eod_submitted_at').eq('employee_id', user.id).eq('date', today).maybeSingle();
+    if (existingRep && existingRep.eod_submitted_at) {
+       // already submitted eod, skip
+    } else if (existingRep) {
       await supabase.from('daily_reports').update({
         eod_report: eodReportText,
         eod_submitted_at: now.toISOString()

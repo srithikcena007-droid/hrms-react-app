@@ -21,6 +21,9 @@ const Attendance = () => {
   
   const [loading, setLoading] = useState(false);
   const [selectedDateDetails, setSelectedDateDetails] = useState(null); // for modal
+  const [isEditingAtt, setIsEditingAtt] = useState(false);
+  const [editAttForm, setEditAttForm] = useState({ check_in: '', check_out: '', bos_report: '', eod_report: '' });
+  const [savingAtt, setSavingAtt] = useState(false);
 
   // Month Navigation
   const handlePrevMonth = () => {
@@ -197,21 +200,40 @@ const Attendance = () => {
       const dayOfWeek = new Date(year, month, d).getDay();
       if (dayOfWeek === 0 || dayOfWeek === 6) continue; // skip weekends
       
+      let _leave = 0;
+      let _half = 0;
+      let _pres = 0;
+      let _abs = 0;
+      
       if (leaveRecords[dateStr]) {
-        leaveDays++;
+        if (leaveRecords[dateStr].days === 0.5) {
+          _leave = 0.5;
+          if (attendanceRecords[dateStr] && attendanceRecords[dateStr].check_in) {
+            _pres = 0.5;
+          } else {
+            _abs = 0.5;
+          }
+        } else {
+          _leave = 1;
+        }
       } else if (attendanceRecords[dateStr]) {
         const att = attendanceRecords[dateStr];
         if (att.dayType === 'Leave') {
-          leaveDays++;
+          _leave = 1;
         } else if (att.dayType === 'Half Day') {
-          halfDays++;
+          _half = 1;
         } else {
-          presentDays++;
+          _pres = 1;
         }
         if (att.isLate) lateDays++;
       } else {
-        absentDays++;
+        _abs = 1;
       }
+
+      leaveDays += _leave;
+      halfDays += _half;
+      presentDays += _pres;
+      absentDays += _abs;
     }
     
     return { presentDays, halfDays, lateDays, leaveDays, absentDays };
@@ -235,9 +257,81 @@ const Attendance = () => {
     const att = attendanceRecords[dateStr];
     const lv = leaveRecords[dateStr];
     
-    if (att || lv) {
+    // Only allow clicking if there is data OR user is a manager+ allowing them to backdate
+    if (att || lv || user?.role !== 'employee') {
       setSelectedDateDetails({ date: dateStr, att, lv });
+      setIsEditingAtt(false);
+      setEditAttForm({
+        check_in: att?.check_in || '',
+        check_out: att?.check_out || '',
+        bos_report: att?.bos_report || '',
+        eod_report: att?.eod_report || ''
+      });
     }
+  };
+
+  const handleSaveAttendance = async () => {
+    if (!selectedDateDetails || !selectedEmployeeId) return;
+    setSavingAtt(true);
+    const dateStr = selectedDateDetails.date;
+    
+    try {
+      // 1. Upsert Attendance
+      const { data: existingAtt } = await supabase.from('attendance')
+        .select('id').eq('employee_id', selectedEmployeeId).eq('date', dateStr).maybeSingle();
+      
+      const checkInParts = editAttForm.check_in.split(':');
+      let status = 'Present';
+      if (checkInParts.length >= 2) {
+        const h = parseInt(checkInParts[0], 10);
+        const m = parseInt(checkInParts[1], 10);
+        if (h > 10 || (h === 10 && m >= 30)) status = 'Late';
+      }
+
+      const attPayload = {
+        employee_id: selectedEmployeeId,
+        date: dateStr,
+        check_in: editAttForm.check_in || null,
+        check_out: editAttForm.check_out || null,
+        status: status
+      };
+
+      if (existingAtt) {
+        await supabase.from('attendance').update(attPayload).eq('id', existingAtt.id);
+      } else if (editAttForm.check_in || editAttForm.check_out) {
+        await supabase.from('attendance').insert(attPayload);
+      }
+
+      // 2. Upsert Daily Reports
+      const { data: existingRep } = await supabase.from('daily_reports')
+        .select('id').eq('employee_id', selectedEmployeeId).eq('date', dateStr).maybeSingle();
+      
+      const repPayload = {
+        employee_id: selectedEmployeeId,
+        date: dateStr,
+        bos_report: editAttForm.bos_report || null,
+        eod_report: editAttForm.eod_report || null
+      };
+
+      if (existingRep) {
+        await supabase.from('daily_reports').update(repPayload).eq('id', existingRep.id);
+      } else if (editAttForm.bos_report || editAttForm.eod_report) {
+        await supabase.from('daily_reports').insert(repPayload);
+      }
+
+      // Refresh data
+      setSelectedDateDetails(null);
+      
+      // Need to re-trigger fetchData by simulating a state change (it uses selectedEmployeeId & currentMonth)
+      setEmployees([...employees]); // hack to re-trigger if needed, or just rely on fetch logic
+      // Actually we just set loading to true and wait for next tick? 
+      // Better to just refresh by updating selectedEmployeeId to itself to trigger useEffect (won't work if same).
+      // Let's just window.location.reload() or abstract fetchData.
+      window.location.reload(); 
+    } catch (err) {
+      console.error(err);
+    }
+    setSavingAtt(false);
   };
 
   return (
@@ -371,11 +465,17 @@ const Attendance = () => {
               const todayStr = new Date(todayDate.getTime() - todayOffset).toISOString().split('T')[0];
               
               const isToday = todayStr === dateStr;
-              const isClickable = !!att || !!lv;
+              const isClickable = !!att || !!lv || user?.role !== 'employee';
               const isWeekend = new Date(year, month, d).getDay() === 0;
               
               let indicator = null;
-              if (lv || (att && att.dayType === 'Leave')) {
+              if (lv && lv.days === 0.5 && att && att.check_in) {
+                indicator = (
+                  <div style={{ width: 24, height: 24, background: '#E0F2FE', color: '#0369A1', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.75rem', title: 'Half Day Leave + Present' }}>
+                    L/P
+                  </div>
+                );
+              } else if (lv || (att && att.dayType === 'Leave')) {
                 indicator = (
                   <div style={{ width: 24, height: 24, background: '#FEE2E2', color: '#C0392B', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>
                     L
@@ -444,6 +544,7 @@ const Attendance = () => {
             { color: '#FFEDD5', textColor: '#F97316', label: 'Half Day', symbol: 'H' },
             { color: '#FEF3C7', textColor: '#CA8A04', label: 'Late', symbol: '!' },
             { color: '#FEE2E2', textColor: '#C0392B', label: 'On Leave', symbol: 'L' },
+            { color: '#E0F2FE', textColor: '#0369A1', label: '0.5 Leave + Present', symbol: 'L/P' },
           ].map(item => (
             <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#646465' }}>
               <div style={{ width: 20, height: 20, background: item.color, color: item.textColor, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.7rem', flexShrink: 0 }}>{item.symbol}</div>
@@ -464,47 +565,88 @@ const Attendance = () => {
               <button className="salary-modal-close" onClick={() => setSelectedDateDetails(null)}><i className="ri-close-line" /></button>
             </div>
             <div style={{ padding: '0 0 1rem' }}>
-              {selectedDateDetails.lv ? (
-                <div style={{ background: '#FFF2F2', padding: '1rem', borderRadius: 8, borderLeft: '4px solid #C0392B', marginBottom: '1rem' }}>
-                  <h4 style={{ color: '#C0392B', fontWeight: 'bold', marginBottom: '0.5rem' }}><i className="ri-calendar-event-line"></i> On Leave</h4>
-                  <p style={{ fontSize: '0.9rem', color: '#000000', marginBottom: '0.25rem' }}><strong>Type:</strong> {selectedDateDetails.lv.type}</p>
-                  <p style={{ fontSize: '0.9rem', color: '#000000' }}><strong>Reason:</strong> {selectedDateDetails.lv.reason || 'N/A'}</p>
-                </div>
-              ) : null}
               
-              {selectedDateDetails.att ? (
-                <div>
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div style={{ background: '#F4F4F4', padding: '1rem', borderRadius: 8 }}>
-                      <p style={{ fontSize: '0.8rem', color: '#646465', fontWeight: 600 }}>Check In</p>
-                      <p style={{ fontSize: '1.1rem', color: '#000000', fontWeight: 'bold' }}>{selectedDateDetails.att.check_in || '-'}</p>
-                      {selectedDateDetails.att.isLate && (
-                        <span style={{ fontSize: '0.75rem', color: '#CA8A04', background: '#FEF3C7', padding: '2px 6px', borderRadius: 4, fontWeight: 'bold' }}>LATE</span>
-                      )}
+              {isEditingAtt ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '0.5rem' }}>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#646465', marginBottom: '0.25rem', display: 'block' }}>Check In</label>
+                      <input type="time" className="salary-input" value={editAttForm.check_in} onChange={e => setEditAttForm(prev => ({...prev, check_in: e.target.value}))} />
                     </div>
-                    <div style={{ background: '#F4F4F4', padding: '1rem', borderRadius: 8 }}>
-                      <p style={{ fontSize: '0.8rem', color: '#646465', fontWeight: 600 }}>Check Out</p>
-                      <p style={{ fontSize: '1.1rem', color: '#000000', fontWeight: 'bold' }}>{selectedDateDetails.att.check_out || '-'}</p>
-                      <span style={{ fontSize: '0.75rem', color: '#006742', background: '#E8F2EF', padding: '2px 6px', borderRadius: 4, fontWeight: 'bold' }}>
-                        {selectedDateDetails.att.dayType.toUpperCase()}
-                        {selectedDateDetails.att.durationHours ? ` (${selectedDateDetails.att.durationHours.toFixed(1)}h)` : ''}
-                      </span>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#646465', marginBottom: '0.25rem', display: 'block' }}>Check Out</label>
+                      <input type="time" className="salary-input" value={editAttForm.check_out} onChange={e => setEditAttForm(prev => ({...prev, check_out: e.target.value}))} />
                     </div>
                   </div>
-                  
-                  <div style={{ background: '#E8F2EF', padding: '1rem', borderRadius: 8, marginBottom: '0.5rem' }}>
-                    <p style={{ fontSize: '0.8rem', color: '#006742', fontWeight: 600, marginBottom: '0.25rem' }}>BOS Report</p>
-                    <p style={{ fontSize: '0.9rem', color: '#000000' }}>{selectedDateDetails.att.bos_report || 'Not submitted'}</p>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#006742', marginBottom: '0.25rem', display: 'block' }}>BOS Report</label>
+                    <textarea className="salary-input" style={{ minHeight: '80px', resize: 'vertical' }} value={editAttForm.bos_report} onChange={e => setEditAttForm(prev => ({...prev, bos_report: e.target.value}))} placeholder="Enter Beginning of Shift report..."></textarea>
                   </div>
-                  
-                  <div style={{ background: '#E0F5EE', padding: '1rem', borderRadius: 8 }}>
-                    <p style={{ fontSize: '0.8rem', color: '#00A87E', fontWeight: 600, marginBottom: '0.25rem' }}>EOD Report</p>
-                    <p style={{ fontSize: '0.9rem', color: '#000000' }}>{selectedDateDetails.att.eod_report || 'Not submitted'}</p>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#00A87E', marginBottom: '0.25rem', display: 'block' }}>EOD Report</label>
+                    <textarea className="salary-input" style={{ minHeight: '80px', resize: 'vertical' }} value={editAttForm.eod_report} onChange={e => setEditAttForm(prev => ({...prev, eod_report: e.target.value}))} placeholder="Enter End of Day report..."></textarea>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '0.5rem' }}>
+                    <button className="salary-cancel-btn" onClick={() => setIsEditingAtt(false)}>Cancel</button>
+                    <button className="salary-submit-btn" style={{ background: '#006742' }} onClick={handleSaveAttendance} disabled={savingAtt}>{savingAtt ? 'Saving...' : 'Save Changes'}</button>
                   </div>
                 </div>
-              ) : !selectedDateDetails.lv ? (
-                <p style={{ color: '#646465' }}>No attendance record found for this day.</p>
-              ) : null}
+              ) : (
+                <>
+                  {selectedDateDetails.lv ? (
+                    <div style={{ background: '#FFF2F2', padding: '1rem', borderRadius: 8, borderLeft: '4px solid #C0392B', marginBottom: '1rem' }}>
+                      <h4 style={{ color: '#C0392B', fontWeight: 'bold', marginBottom: '0.5rem' }}><i className="ri-calendar-event-line"></i> {selectedDateDetails.lv.days === 0.5 ? 'Half Day ' : 'On '}Leave</h4>
+                      <p style={{ fontSize: '0.9rem', color: '#000000', marginBottom: '0.25rem' }}><strong>Type:</strong> {selectedDateDetails.lv.type}</p>
+                      <p style={{ fontSize: '0.9rem', color: '#000000' }}><strong>Reason:</strong> {selectedDateDetails.lv.reason || 'N/A'}</p>
+                    </div>
+                  ) : null}
+                  
+                  {selectedDateDetails.att ? (
+                    <div>
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div style={{ background: '#F4F4F4', padding: '1rem', borderRadius: 8 }}>
+                          <p style={{ fontSize: '0.8rem', color: '#646465', fontWeight: 600 }}>Check In</p>
+                          <p style={{ fontSize: '1.1rem', color: '#000000', fontWeight: 'bold' }}>{selectedDateDetails.att.check_in || '-'}</p>
+                          {selectedDateDetails.att.isLate && (
+                            <span style={{ fontSize: '0.75rem', color: '#CA8A04', background: '#FEF3C7', padding: '2px 6px', borderRadius: 4, fontWeight: 'bold' }}>LATE</span>
+                          )}
+                        </div>
+                        <div style={{ background: '#F4F4F4', padding: '1rem', borderRadius: 8 }}>
+                          <p style={{ fontSize: '0.8rem', color: '#646465', fontWeight: 600 }}>Check Out</p>
+                          <p style={{ fontSize: '1.1rem', color: '#000000', fontWeight: 'bold' }}>{selectedDateDetails.att.check_out || '-'}</p>
+                          <span style={{ fontSize: '0.75rem', color: '#006742', background: '#E8F2EF', padding: '2px 6px', borderRadius: 4, fontWeight: 'bold' }}>
+                            {selectedDateDetails.att.dayType.toUpperCase()}
+                            {selectedDateDetails.att.durationHours ? ` (${selectedDateDetails.att.durationHours.toFixed(1)}h)` : ''}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div style={{ background: '#E8F2EF', padding: '1rem', borderRadius: 8, marginBottom: '0.5rem' }}>
+                        <p style={{ fontSize: '0.8rem', color: '#006742', fontWeight: 600, marginBottom: '0.25rem' }}>BOS Report</p>
+                        <p style={{ fontSize: '0.9rem', color: '#000000', whiteSpace: 'pre-wrap' }}>{selectedDateDetails.att.bos_report || 'Not submitted'}</p>
+                      </div>
+                      
+                      <div style={{ background: '#E0F5EE', padding: '1rem', borderRadius: 8 }}>
+                        <p style={{ fontSize: '0.8rem', color: '#00A87E', fontWeight: 600, marginBottom: '0.25rem' }}>EOD Report</p>
+                        <p style={{ fontSize: '0.9rem', color: '#000000', whiteSpace: 'pre-wrap' }}>{selectedDateDetails.att.eod_report || 'Not submitted'}</p>
+                      </div>
+                    </div>
+                  ) : !selectedDateDetails.lv ? (
+                    <p style={{ color: '#646465' }}>No attendance record found for this day.</p>
+                  ) : null}
+
+                  {user?.role !== 'employee' && (
+                    <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'center' }}>
+                      <button 
+                        onClick={() => setIsEditingAtt(true)}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#F4F4F4', color: '#000', padding: '0.5rem 1.5rem', borderRadius: '8px', fontWeight: '600' }}
+                      >
+                        <i className="ri-pencil-line"></i> Edit Attendance
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </div>
         </div>

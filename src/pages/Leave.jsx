@@ -75,12 +75,13 @@ const GrantCompOffModal = ({ onClose, onGrant }) => {
 const Leave = () => {
   const { user } = useContext(AuthContext);
   const {
-    applyLeave, getUserBalance, getMyRequests, getPendingForApproval,
+    applyLeave, updateLeave, getUserBalance, getMyRequests, getPendingForApproval,
     approveLeave, rejectLeave, grantCompOff, getLeaveHistory, loading
   } = useContext(LeaveContext);
 
   const [activeTab, setActiveTab] = useState('my');
-  const [form, setForm] = useState({ type: 'Sick Leave', from: '', to: '', reason: '' });
+  const [form, setForm] = useState({ type: 'Sick Leave', from: '', to: '', reason: '', isHalfDay: false });
+  const [editingLeaveId, setEditingLeaveId] = useState(null);
   const [formMsg, setFormMsg] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [showGrantModal, setShowGrantModal] = useState(false);
@@ -113,7 +114,12 @@ const Leave = () => {
   });
 
   const handleFormChange = (e) => {
-    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+    setForm(prev => {
+      const nextForm = { ...prev, [e.target.name]: value };
+      if (nextForm.isHalfDay) nextForm.to = nextForm.from; // Lock "to" date if half day
+      return nextForm;
+    });
     setFormMsg(null);
   };
 
@@ -131,24 +137,67 @@ const Leave = () => {
       setFormMsg({ type: 'error', text: '"To" date cannot be before "From" date.' });
       return;
     }
+
+    const days = form.isHalfDay ? 0.5 : Math.round((new Date(form.to) - new Date(form.from)) / (1000 * 60 * 60 * 24)) + 1;
     const bal = balance[form.type];
-    const days = Math.round((new Date(form.to) - new Date(form.from)) / (1000 * 60 * 60 * 24)) + 1;
-    if (bal && days > bal.remaining) {
+    
+    if (bal && days > bal.remaining && !(editingLeaveId)) {
       setFormMsg({ type: 'error', text: `Insufficient balance. You have ${bal.remaining} day(s) remaining for ${form.type}.` });
       return;
     }
 
-    setSubmitting(true);
-    await applyLeave({ type: form.type, from: form.from, to: form.to, reason: form.reason });
-
-    setFormMsg({
-      type: 'success',
-      text: isSuperAdmin
-        ? `Leave request submitted and auto-approved! (${days} day${days > 1 ? 's' : ''})`
-        : `Leave request submitted successfully! Awaiting approval. (${days} day${days > 1 ? 's' : ''})`,
+    // Check for duplicate/overlapping leaves
+    const { data: existingLeaves } = await supabase
+      .from('leaves')
+      .select('id, from_date, to_date')
+      .eq('employee_id', user.id)
+      .neq('status', 'Rejected');
+    
+    const newFrom = new Date(form.from).getTime();
+    const newTo = new Date(form.to).getTime();
+    const hasOverlap = existingLeaves?.some(l => {
+      if (editingLeaveId && l.id === editingLeaveId) return false;
+      const exFrom = new Date(l.from_date).getTime();
+      const exTo = new Date(l.to_date).getTime();
+      return (newFrom <= exTo && newTo >= exFrom);
     });
-    setForm({ type: 'Sick Leave', from: '', to: '', reason: '' });
+
+    if (hasOverlap) {
+      setFormMsg({ type: 'error', text: 'You already have a leave request overlapping these dates.' });
+      return;
+    }
+
+    setSubmitting(true);
+    if (editingLeaveId) {
+      await updateLeave({ id: editingLeaveId, type: form.type, from: form.from, to: form.to, reason: form.reason, days });
+      setFormMsg({ type: 'success', text: `Leave request updated successfully! (${days} day${days > 1 ? 's' : ''})` });
+    } else {
+      await applyLeave({ type: form.type, from: form.from, to: form.to, reason: form.reason, days });
+      setFormMsg({
+        type: 'success',
+        text: isSuperAdmin
+          ? `Leave request submitted and auto-approved! (${days} day${days > 1 ? 's' : ''})`
+          : `Leave request submitted successfully! Awaiting approval. (${days} day${days > 1 ? 's' : ''})`,
+      });
+    }
+
+    setForm({ type: 'Sick Leave', from: '', to: '', reason: '', isHalfDay: false });
+    setEditingLeaveId(null);
     setSubmitting(false);
+  };
+
+  const handleEditLeave = (leave) => {
+    setEditingLeaveId(leave.id);
+    setForm({
+      type: leave.type,
+      from: leave.from_date || leave.from,
+      to: leave.to_date || leave.to,
+      reason: leave.reason || '',
+      isHalfDay: leave.days === 0.5
+    });
+    setFormMsg(null);
+    // scroll to top smoothly
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleGrant = async (employeeId, daysToAdd) => {
@@ -236,7 +285,11 @@ const Leave = () => {
               </div>
               <div className="input-group">
                 <label>To</label>
-                <input type="date" name="to" value={form.to} onChange={handleFormChange} required />
+                <input type="date" name="to" value={form.to} onChange={handleFormChange} required disabled={form.isHalfDay} />
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', cursor: 'pointer', fontSize: '0.85rem' }}>
+                  <input type="checkbox" name="isHalfDay" checked={form.isHalfDay} onChange={handleFormChange} />
+                  Half Day (0.5 days)
+                </label>
               </div>
               <div className="input-group">
                 <label>Reason</label>
@@ -256,7 +309,7 @@ const Leave = () => {
               <div className="leave-days-preview">
                 <i className="ri-calendar-event-line" />
                 <strong>
-                  {Math.round((new Date(form.to) - new Date(form.from)) / (1000 * 60 * 60 * 24)) + 1} day(s)
+                  {form.isHalfDay ? '0.5' : Math.round((new Date(form.to) - new Date(form.from)) / (1000 * 60 * 60 * 24)) + 1} day(s)
                 </strong> requested
               </div>
             )}
@@ -268,7 +321,7 @@ const Leave = () => {
               disabled={submitting}
             >
               <i className="ri-send-plane-line" />
-              {isSuperAdmin ? 'Submit & Auto-Approve' : 'Submit Request'}
+              {editingLeaveId ? 'Update Request' : isSuperAdmin ? 'Submit & Auto-Approve' : 'Submit Request'}
             </button>
           </form>
         </div>
@@ -357,12 +410,22 @@ const Leave = () => {
                             <td>{statusBadge(row.status)}</td>
                             <td style={{ color: '#A3AED0' }}>{new Date(row.created_at || row.appliedOn || new Date()).toLocaleDateString()}</td>
                             <td>
-                              <button
-                                style={{ background: 'none', border: '1px solid #CBD5E1', borderRadius: 6, padding: '0.25rem 0.6rem', cursor: 'pointer', color: '#4318FF', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
-                                onClick={() => setSelectedLeaveReason({ reason: row.reason || 'No reason provided.', type: row.type, comment: row.rejection_comment, status: row.status })}
-                              >
-                                <i className="ri-eye-line" /> View
-                              </button>
+                              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <button
+                                  style={{ background: 'none', border: '1px solid #CBD5E1', borderRadius: 6, padding: '0.25rem 0.6rem', cursor: 'pointer', color: '#003B2C', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
+                                  onClick={() => setSelectedLeaveReason({ reason: row.reason || 'No reason provided.', type: row.type, comment: row.rejection_comment, status: row.status })}
+                                >
+                                  <i className="ri-eye-line" /> View
+                                </button>
+                                {row.status === 'Pending' && (
+                                  <button
+                                    style={{ background: 'none', border: '1px solid #CBD5E1', borderRadius: 6, padding: '0.25rem 0.6rem', cursor: 'pointer', color: '#64748B', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
+                                    onClick={() => handleEditLeave(row)}
+                                  >
+                                    <i className="ri-pencil-line" /> Edit
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         ))}
