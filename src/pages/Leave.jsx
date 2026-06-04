@@ -545,7 +545,7 @@ const Leave = () => {
                             <td>{statusBadge(row.status)}</td>
                             <td>
                               <button
-                                style={{ background: 'none', border: '1px solid #CBD5E1', borderRadius: 6, padding: '0.25rem 0.6rem', cursor: 'pointer', color: '#4318FF', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
+                                style={{ background: 'none', border: '1px solid #CBD5E1', borderRadius: 6, padding: '0.25rem 0.6rem', cursor: 'pointer', color: '#003B2C', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
                                 onClick={() => setSelectedLeaveReason({ reason: row.reason || 'No reason provided.', type: row.type, comment: row.rejection_comment, status: row.status })}
                               >
                                 <i className="ri-eye-line" /> View

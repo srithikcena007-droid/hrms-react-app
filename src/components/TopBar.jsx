@@ -115,13 +115,6 @@ const TopBar = ({ title }) => {
     <div className="topbar">
       <h1 className="page-title">{title}</h1>
       <div className="topbar-actions">
-        <div className="icon-btn">
-          <i className="ri-search-line"></i>
-        </div>
-        <div className="icon-btn" style={{ position: 'relative' }}>
-          <i className="ri-notification-3-line"></i>
-          <span style={{ position: 'absolute', top: '8px', right: '8px', width: '8px', height: '8px', background: 'var(--danger)', borderRadius: '50%' }}></span>
-        </div>
 
         <div className="user-profile" style={{ position: 'relative', cursor: 'pointer' }} ref={dropdownRef} onClick={() => setDropdownOpen(!dropdownOpen)}>
           <div className="avatar" style={{ overflow: 'hidden' }}>
