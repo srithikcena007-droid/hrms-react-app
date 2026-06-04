@@ -394,7 +394,7 @@ const Employees = () => {
               <th>ID</th>
               <th>Name</th>
               <th>Department</th>
-              <th>Role</th>
+              <th>Designation</th>
               <th>Status</th>
               {user.role === 'superadmin' && <th>Actions</th>}
             </tr>
@@ -419,14 +419,14 @@ const Employees = () => {
                         <EmpAvatar emp={emp} size={36} />
                         <div>
                           <div className="font-bold" style={{ color: '#000' }}>{emp.name}</div>
-                          <div style={{ fontSize: '0.78rem', color: '#646465' }}>{emp.designation}</div>
+                          <div style={{ fontSize: '0.78rem', color: '#646465', textTransform: 'capitalize' }}>
+                            {emp.role}{(emp.role === 'admin' || emp.role === 'manager') && emp.managed_department ? ` (${emp.managed_department})` : ''}
+                          </div>
                         </div>
                       </div>
                     </td>
                     <td>{emp.department}</td>
-                    <td style={{ textTransform: 'capitalize' }}>
-                      {emp.role}{(emp.role === 'admin' || emp.role === 'manager') && emp.managed_department ? ` (${emp.managed_department})` : ''}
-                    </td>
+                    <td>{emp.designation}</td>
                     <td>
                       <span style={{ ...sc, padding: '3px 12px', borderRadius: 20, fontSize: '0.78rem', fontWeight: 700 }}>
                         {emp.status || 'Active'}
