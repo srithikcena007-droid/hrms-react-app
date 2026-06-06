@@ -61,7 +61,7 @@ const PaymentHistoryTable = ({ payments, onDownload }) => (
                   className="salary-payslip-btn"
                   onClick={() => onDownload(row)}
                 >
-                  <i className="ri-download-2-line" /> Payslip
+                  <i className="ri-eye-line" /> View Payslip
                 </button>
               </td>
             </tr>
@@ -108,7 +108,7 @@ const AllPaymentsTable = ({ payments, onDownload, onDelete }) => (
               <td>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <button className="salary-payslip-btn" onClick={() => onDownload(row)}>
-                    <i className="ri-download-2-line" /> Payslip
+                    <i className="ri-eye-line" /> View Payslip
                   </button>
                   {onDelete && (
                     <button className="salary-payslip-btn" style={{ background: '#FFF0F0', color: '#C62828', border: '1px solid #FFCDD2' }} onClick={() => { if(window.confirm('Are you sure you want to delete this payment?')) onDelete(row.id); }}>
