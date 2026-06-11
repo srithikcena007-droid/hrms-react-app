@@ -18,9 +18,9 @@
   --text-main:     #000000;   /* Black */
   --text-muted:    #646465;   /* Medium Gray */
   --bg-main:       #F4F4F4;   /* Ultra Light Gray */
-  --card-bg:       #FFFFFF;   /* White */
+  --card-bg:       #eae1e1;   /* White */
   --border:        #E8E8E8;   /* Soft Gray */
-  --danger:        #C0392B;   /* Dark Red – errors only */
+  --danger:        #ce3321;   /* Dark Red – errors only */
   --success:       #00A87E;   /* Neo Green */
   --warning:       #CA8A04;   /* Amber */
   --shadow:        0px 8px 24px rgba(0, 59, 44, 0.08);

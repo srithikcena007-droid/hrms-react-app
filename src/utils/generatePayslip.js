@@ -97,8 +97,8 @@ export const generatePayslip = (payment) => {
     }
 
     /* Header */
-    .header { position: relative; text-align: center; margin-bottom: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 50px; }
-    .header-logo { position: absolute; left: 0; top: 0; height: 48px; width: auto; }
+    .header { position: relative; text-align: center; margin-bottom: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60px; }
+    .header-logo { position: absolute; left: 0; top: 50%; transform: translateY(-50%); height: 28px; width: auto; }
     .header-text { text-align: center; }
     .company { font-family: 'Instrument Sans', sans-serif; font-size: 22px; font-weight: 700; letter-spacing: 1px; color: #003B2C; text-transform: uppercase; }
     .payslip-title { font-size: 15px; font-weight: 600; margin-top: 4px; color: #006742; }
